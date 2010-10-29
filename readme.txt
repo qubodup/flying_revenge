@@ -16,6 +16,8 @@ $ love .
 
 Or drag-and-drop on a LÖVE executable.
 
+The idea is based on the topic of the jam and on how flies move in annoying patterns.
+
 LICENSE (one of the few you can pick, don't even remember which this one is)
 
 Copyright (c) 2010, Iwan "qubodup" Gabovitch
