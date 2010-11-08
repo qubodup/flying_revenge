@@ -15,12 +15,12 @@ function love.load()
 	}
 	currentFly = 1
 	sfx = {
-		bzzz = love.audio.newSource("bzzz.wav", static),
-		splash = love.audio.newSource("splash.wav", static),
-		suck = love.audio.newSource("suck.wav", static),
+		bzzz = love.audio.newSource("bzzz.ogg", stream),
+		splash = love.audio.newSource("splash.ogg", stream),
+		suck = love.audio.newSource("suck.ogg", stream),
 		scream = {
-			love.audio.newSource("scream1.wav", static),
-			love.audio.newSource("scream2.wav", static),
+			love.audio.newSource("scream1.ogg", stream),
+			love.audio.newSource("scream2.ogg", stream),
 		},
 	}
 	humanSpeed = 25
