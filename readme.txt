@@ -9,7 +9,7 @@ Sounds by me via EeePC 1000H mic + Audacity.
 
 Everything licensed under BSD, MIT and zLib (pick one).
 
-You need LÖVE <http://love2d.org/> to play.
+You need LÖVE <http://love2d.org/> to play. It works with 0.6 (but sound can be broken) and 0.7.0 beta.
 
 $ cd nameofthedirectory
 $ love .
