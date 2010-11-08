@@ -33,6 +33,7 @@ function love.load()
 	puddles = {}
 	spacePressed = false
 	flyFreakTimer = 0
+	flyAnimationTimer = 0
 	sfx.bzzz:setLooping( true )
 	love.audio.play(sfx.bzzz)
 end
@@ -56,6 +57,12 @@ function love.update(dt)
 	end
 	-- fly
 	if not spacePressed then -- change fly movement only when space not pressed
+		-- animation
+		flyAnimationTimer = flyAnimationTimer + dt
+		if flyAnimationTimer > .1 then
+			currentFly = math.mod(currentFly,2)+1
+			flyAnimationTimer = math.mod(flyAnimationTimer - .2,.2)
+		end
 		-- random direction changes
 		flyFreakTimer = flyFreakTimer + (dt * (1 + math.random()))
 		if flyFreakTimer > 1 then
