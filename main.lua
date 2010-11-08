@@ -22,6 +22,8 @@ function love.load()
 			love.audio.newSource("scream1.ogg", stream),
 			love.audio.newSource("scream2.ogg", stream),
 		},
+		boom = love.audio.newSource("boom.ogg", stream),
+		kaboom = love.audio.newSource("kaboom.ogg", stream),
 	}
 	humanSpeed = 25
 	flySpeed = 100
