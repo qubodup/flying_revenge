@@ -1,12 +1,25 @@
 function love.load()
 	math.randomseed( os.time() )
 	love.graphics.setBackgroundColor( 107, 186, 112 )
+
+	-- game status can be title, instructions or game
+	status = "title"
 	gfx = {
 		title = love.graphics.newImage("title.png"),
 		instructions = love.graphics.newImage("instructions.png"),
 		fly = {
-			love.graphics.newImage("fly1.png"),
-			love.graphics.newImage("fly2.png"),
+			{ -- animation step 1
+				a_1_1 = love.graphics.newImage("fly1-tl.png"),
+				a_11 = love.graphics.newImage("fly1-bl.png"),
+				a11 = love.graphics.newImage("fly1-br.png"),
+				a1_1 = love.graphics.newImage("fly1-tr.png"),
+			},
+			{ -- animation step 2
+				a_1_1 = love.graphics.newImage("fly2-tl.png"),
+				a_11 = love.graphics.newImage("fly2-bl.png"),
+				a11 = love.graphics.newImage("fly2-br.png"),
+				a1_1 = love.graphics.newImage("fly2-tr.png"),
+			},
 		},
 		human = {
 			love.graphics.newImage("human1.gif"),
@@ -73,8 +86,11 @@ function love.load()
 		kaboom = love.audio.newSource("kaboom.ogg", stream),
 	}
 	humanSpeed = 25
-	flySpeed = 100
-	fly = { pos = {math.random(128, 384), math.random(128,384)}, dir = {oneOrMinusOne(), oneOrMinusOne() } }
+	fly = {
+		speed = 100,
+		pos = {math.random(128, 384), math.random(128,384)},
+		dir = {oneOrMinusOne(), oneOrMinusOne() }
+	}
 	humans = {}
 	for count = 1, math.random(9,18), 1 do
 		table.insert(humans, { pos = {math.random(32, 480), math.random(32, 480)}, dir = {oneOrMinusOne(), oneOrMinusOne()}})
@@ -84,10 +100,10 @@ function love.load()
 	flyFreakTimer = 0
 	flyAnimationTimer = 0
 	sfx.bzzz:setLooping( true )
-	love.audio.play(sfx.bzzz)
 end
 
 function love.update(dt)
+if status == "game" then
 	-- humans
 	for i,v in ipairs(humans) do
 		newPosNeeded = false
@@ -129,6 +145,12 @@ function love.update(dt)
 		end
 	end
 	-- fly
+	-- random direction changes (are supposed to happen while stopping
+	flyFreakTimer = flyFreakTimer + (dt * (1 + math.random()))
+	if flyFreakTimer > 1 then
+		fly.dir = {oneOrMinusOne(), oneOrMinusOne()}
+		flyFreakTimer = 0
+	end
 	if not spacePressed then -- change fly movement only when space not pressed
 		-- animation
 		flyAnimationTimer = flyAnimationTimer + dt
@@ -136,14 +158,8 @@ function love.update(dt)
 			currentFly = math.mod(currentFly,2)+1
 			flyAnimationTimer = math.mod(flyAnimationTimer - .2,.2)
 		end
-		-- random direction changes
-		flyFreakTimer = flyFreakTimer + (dt * (1 + math.random()))
-		if flyFreakTimer > 1 then
-			fly.dir = {oneOrMinusOne(), oneOrMinusOne()}
-			flyFreakTimer = 0
-		end
 		-- border direction changes
-		newPos = step(fly, flySpeed, dt)
+		newPos = step(fly, fly.speed, dt)
 		if newPos[1] < 128 and fly.dir[1] == -1 or newPos[1] > 530 and fly.dir[1] == 1 then
 			fly.dir[1] = -fly.dir[1]
 			newPosNeeded = true
@@ -153,7 +169,7 @@ function love.update(dt)
 			newPosNeeded = true
 		end
 		if newPosNeeded then
-			newPos = step(fly, flySpeed, dt)
+			newPos = step(fly, fly.speed, dt)
 		end
 		fly.pos = newPos
 	end
@@ -164,8 +180,14 @@ function love.update(dt)
 		end
 	end
 end
+end
 
 function love.draw()
+if status == "title" then
+	love.graphics.draw(gfx.title, 128, 112)
+elseif status == "instructions" then
+	love.graphics.draw(gfx.instructions, 128, 112)
+elseif status == "game" then
 	-- bg, causes slowdown :(
 	--[[ for i = 0, 512, 32 do
 		for j = 0, 512, 32 do
@@ -191,22 +213,29 @@ function love.draw()
 		end
 	end
 	-- fly
-	love.graphics.draw(gfx.fly[currentFly], math.floor(fly.pos[1]-32), math.floor(fly.pos[2]-32))
+	love.graphics.draw(gfx.fly[currentFly][string.gsub("a"..fly.dir[1]..fly.dir[2],"-","_")], math.floor(fly.pos[1]-32), math.floor(fly.pos[2]-32))
 end
 
 function love.keypressed(key, unicode)
-        if key == ' ' then
-                spacePressed = true
-		love.audio.pause(sfx.bzzz)
-		smashThem()
-        end
-	if key == 'q' or key == 'escape' then
-                love.event.push('q') -- quit the game 
-        end
-	-- boss debug
-	if key == 'd' then
-		humans = {}
-		boss.stage = "active"
+	if status == "title" then
+		status = "instructions"
+	elseif status == "instructions" then
+		status = "game"
+		love.audio.play(sfx.bzzz)
+	else
+		if key == ' ' then
+			spacePressed = true
+			love.audio.pause(sfx.bzzz)
+			smashThem()
+		end
+		if key == 'q' or key == 'escape' then
+			love.event.push('q') -- quit the game 
+		end
+		-- boss debug
+		if key == 'd' then
+			humans = {}
+			boss.stage = "active"
+		end
 	end
 end
 
@@ -215,6 +244,7 @@ function love.keyreleased(key, unicode)
 		spacePressed = false
 		love.audio.resume(sfx.bzzz)
 	end
+end
 end
 
 function smashThem()
