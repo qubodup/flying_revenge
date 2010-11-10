@@ -16,7 +16,7 @@ function love.load()
 		bg = love.graphics.newImage("smear.png"),
 	}
 	boss = {
-		active = false,
+		stage = "sleeping", -- can be sleeping, active or limbless
 		status = {
 			head = "fit",
 			body = "fit",
@@ -37,14 +37,14 @@ function love.load()
 				armLeft = love.graphics.newImage("boss-arm-left.png"),
 				armRight = love.graphics.newImage("boss-arm-right.png"),
 			},
-			--[[dead = {
+			dead = {
 				head = love.graphics.newImage("boss-head-dead.png"),
 				body = love.graphics.newImage("boss-body-dead.png"),
-				legleft = love.graphics.newImage("boss-leg-left-dead.png"),
-				legright = love.graphics.newImage("boss-leg-right-dead.png"),
-				armleft = love.graphics.newImage("boss-arm-left-dead.png"),
-				armright = love.graphics.newImage("boss-arm-right-dead.png"),
-			},]]--
+				legLeft = love.graphics.newImage("boss-leg-left-dead.png"),
+				legRight = love.graphics.newImage("boss-leg-right-dead.png"),
+				armLeft = love.graphics.newImage("boss-arm-left-dead.png"),
+				armRight = love.graphics.newImage("boss-arm-right-dead.png"),
+			},
 		},
 		offset = {
 			head = { -32, -96 },
@@ -106,7 +106,7 @@ function love.update(dt)
 		v.pos = newPos
 	end
 	-- boss movement 
-	if boss.active then
+	if boss.stage ~= "sleeping" and boss.stage ~= "dead" then
 		newPosNeeded = false
 		newPos = step(boss, boss.speed, dt)
 		if newPos[1] < 96 and boss.dir[1] == -1 or newPos[1] > 512 - 96 and boss.dir[1] == 1 then
@@ -185,7 +185,7 @@ function love.draw()
 		end
 	end
 	-- boss
-	if boss.active then
+	if boss.stage ~= "sleeping" then
 		for i,v in pairs(boss.status) do
 			love.graphics.draw(boss.gfx[v][i], math.floor(boss.pos[1]) + boss.offset[i][1], math.floor(boss.pos[2] + boss.offset[i][2]))
 		end
@@ -206,7 +206,7 @@ function love.keypressed(key, unicode)
 	-- boss debug
 	if key == 'd' then
 		humans = {}
-		boss.active = true
+		boss.stage = "active"
 	end
 end
 
@@ -226,16 +226,25 @@ function smashThem()
 			humansKilled = true
 		end
 	end
-	for i,v in pairs(boss.status) do
-		bossPart = {
-			pos = {
-				boss.pos[1] + boss.offset[i][1] + 32,
-				boss.pos[2] + boss.offset[i][2] + 32,
-			},
-		}
-		if flyOver(bossPart) and v == "fit" then
-			table.insert(puddles, bossPart)
-			v = "dead"
+	if boss.stage ~= "sleeping" then
+		for i,v in pairs(boss.status) do
+			bossPart = {
+				pos = {
+					boss.pos[1] + boss.offset[i][1] + 32,
+					boss.pos[2] + boss.offset[i][2] + 32,
+				},
+			}
+			if flyOver(bossPart) and v == "fit" then
+				-- head/body exceptions
+				if boss.stage == "limbless" or ( i ~= "body" and i ~= "head" ) then
+					table.insert(puddles, bossPart)
+					boss.status[i] = "dead"
+					--if  then boss.stage = "limbless" end
+				end
+			end
+		end
+		if boss.status.armLeft == "dead" and  boss.status.armRight == "dead" and  boss.status.legLeft == "dead" and boss.status.legRight == "dead" then
+			boss.stage = "limbless"
 		end
 	end
 	-- sound
@@ -248,7 +257,7 @@ function smashThem()
 	end
 	-- boss spawn check
 	if humansKilled and #humans == 0 then
-		boss.spawned = true
+		boss.stage = active
 	end
 end
 
@@ -256,7 +265,7 @@ function flyOver(targetVector)
 	if targetVector.pos[1] < fly.pos[1] + 32 and targetVector.pos[1] > fly.pos[1] - 32 and targetVector.pos[2] < fly.pos[2] + 32 and targetVector.pos[2] > fly.pos[2] - 32 then
 		return true
 	else
-		return false
+		return false 
 	end
 end
 
