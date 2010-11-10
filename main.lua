@@ -2,6 +2,8 @@ function love.load()
 	math.randomseed( os.time() )
 	love.graphics.setBackgroundColor( 107, 186, 112 )
 	gfx = {
+		title = love.graphics.newImage("title.png"),
+		instructions = love.graphics.newImage("instructions.png"),
 		fly = {
 			love.graphics.newImage("fly1.png"),
 			love.graphics.newImage("fly2.png"),
@@ -12,6 +14,51 @@ function love.load()
 		},
 		blood = love.graphics.newImage("blood.gif"),
 		bg = love.graphics.newImage("smear.png"),
+	}
+	boss = {
+		active = false,
+		status = {
+			head = "fit",
+			body = "fit",
+			armRight = "fit",
+			armLeft = "fit",
+			legRight = "fit",
+			legLeft = "fit",
+		},
+		speed = 35,
+		pos = { 256, 256 },
+		dir = {oneOrMinusOne(), oneOrMinusOne()},
+		gfx = {
+			fit = {
+				head = love.graphics.newImage("boss-head.png"),
+				body = love.graphics.newImage("boss-body.png"),
+				legLeft = love.graphics.newImage("boss-leg-left.png"),
+				legRight = love.graphics.newImage("boss-leg-right.png"),
+				armLeft = love.graphics.newImage("boss-arm-left.png"),
+				armRight = love.graphics.newImage("boss-arm-right.png"),
+			},
+			--[[dead = {
+				head = love.graphics.newImage("boss-head-dead.png"),
+				body = love.graphics.newImage("boss-body-dead.png"),
+				legleft = love.graphics.newImage("boss-leg-left-dead.png"),
+				legright = love.graphics.newImage("boss-leg-right-dead.png"),
+				armleft = love.graphics.newImage("boss-arm-left-dead.png"),
+				armright = love.graphics.newImage("boss-arm-right-dead.png"),
+			},]]--
+		},
+		offset = {
+			head = { -32, -96 },
+			body = { -32, -32 },
+			legLeft = { -64, 32 },
+			legRight = { 0, 32 },
+			armLeft = { 32, -32 },
+			armRight = { -96, -32 },
+		},
+		-- freaked out'-ness' for random direction changes
+		freak = {
+			timer = 0,
+			limit = 2,
+		},
 	}
 	currentFly = 1
 	sfx = {
@@ -27,10 +74,10 @@ function love.load()
 	}
 	humanSpeed = 25
 	flySpeed = 100
-	fly = { {math.random(128, 384), math.random(128,384)}, {oneOrMinusOne(), oneOrMinusOne() } }
+	fly = { pos = {math.random(128, 384), math.random(128,384)}, dir = {oneOrMinusOne(), oneOrMinusOne() } }
 	humans = {}
 	for count = 1, math.random(9,18), 1 do
-		table.insert(humans, { {math.random(32, 480), math.random(32, 480)}, {oneOrMinusOne(), oneOrMinusOne()}})
+		table.insert(humans, { pos = {math.random(32, 480), math.random(32, 480)}, dir = {oneOrMinusOne(), oneOrMinusOne()}})
 	end
 	puddles = {}
 	spacePressed = false
@@ -43,19 +90,43 @@ end
 function love.update(dt)
 	-- humans
 	for i,v in ipairs(humans) do
+		newPosNeeded = false
 		newPos = step(v, humanSpeed, dt)
-		if newPos[1] < 32 and v[2][1] == -1 or newPos[1] > 480 and v[2][1] == 1 then
-			v[2][1] = -v[2][1] -- reverse direction
+		if newPos[1] < 32 and v.dir[1] == -1 or newPos[1] > 480 and v.dir[1] == 1 then
+			v.dir[1] = -v.dir[1] -- reverse direction
 			newPosNeeded = true
 		end
-		if newPos[2] < 32 and v[2][2] == -1 or newPos[2] > 480 and v[2][2] == 1 then
-			v[2][2] = -v[2][2] -- reverse direction
+		if newPos[2] < 32 and v.dir[2] == -1 or newPos[2] > 480 and v.dir[2] == 1 then
+			v.dir[2] = -v.dir[2] -- reverse direction
 			newPosNeeded = true
 		end
 		if newPosNeeded then
 			newPos = step(v, humanSpeed, dt) -- recalculation
 		end
-		v[1] = newPos
+		v.pos = newPos
+	end
+	-- boss movement 
+	if boss.active then
+		newPosNeeded = false
+		newPos = step(boss, boss.speed, dt)
+		if newPos[1] < 96 and boss.dir[1] == -1 or newPos[1] > 512 - 96 and boss.dir[1] == 1 then
+			boss.dir[1] = -boss.dir[1] -- reverse direction
+			newPosNeeded = true
+		end
+		if newPos[2] < 96 and boss.dir[2] == -1 or newPos[2] > 512 - 96 and boss.dir[2] == 1 then
+			boss.dir[2] = -boss.dir[2] -- reverse direction
+			newPosNeeded = true
+		end
+		if newPosNeeded then
+			newPos = step(boss, boss.speed, dt) -- recalculation
+		end
+		boss.pos = newPos
+		-- random direction changes
+		boss.freak.timer = boss.freak.timer + (dt * (1 + math.random()))
+		if boss.freak.timer > boss.freak.limit then
+			boss.dir = {oneOrMinusOne(), oneOrMinusOne()}
+			boss.freak.timer = 0
+		end
 	end
 	-- fly
 	if not spacePressed then -- change fly movement only when space not pressed
@@ -68,48 +139,59 @@ function love.update(dt)
 		-- random direction changes
 		flyFreakTimer = flyFreakTimer + (dt * (1 + math.random()))
 		if flyFreakTimer > 1 then
-			fly[2] = {oneOrMinusOne(), oneOrMinusOne()}
+			fly.dir = {oneOrMinusOne(), oneOrMinusOne()}
 			flyFreakTimer = 0
 		end
 		-- border direction changes
 		newPos = step(fly, flySpeed, dt)
-		if newPos[1] < 128 and fly[2][1] == -1 or newPos[1] > 530 and fly[2][1] == 1 then
-			fly[2][1] = -fly[2][1]
+		if newPos[1] < 128 and fly.dir[1] == -1 or newPos[1] > 530 and fly.dir[1] == 1 then
+			fly.dir[1] = -fly.dir[1]
 			newPosNeeded = true
 		end
-		if newPos[2] < -18 and fly[2][2] == -1 or newPos[2] > 384 and fly[2][2] == 1 then
-			fly[2][2] = -fly[2][2]
+		if newPos[2] < -18 and fly.dir[2] == -1 or newPos[2] > 384 and fly.dir[2] == 1 then
+			fly.dir[2] = -fly.dir[2]
 			newPosNeeded = true
 		end
 		if newPosNeeded then
 			newPos = step(fly, flySpeed, dt)
 		end
-		fly[1] = newPos
+		fly.pos = newPos
+	end
+	-- fly over humans scream
+	for i,v in ipairs(humans) do
+		if flyOver(v) and sfx.scream[1]:isStopped() and sfx.scream[2]:isStopped() then
+			love.audio.play(sfx.scream[math.random(1,2)])
+		end
 	end
 end
 
 function love.draw()
 	-- bg, causes slowdown :(
-	--[[for i = 0, 512, 32 do
+	--[[ for i = 0, 512, 32 do
 		for j = 0, 512, 32 do
 			love.graphics.draw(gfx.bg, i, j)
 		end
-	end]]--
+	end ]]--
 	-- dead people
 	for i,v in ipairs(puddles) do
-		love.graphics.draw(gfx.blood, math.floor(v[1][1]-32), math.floor(v[1][2]-32))
+		love.graphics.draw(gfx.blood, math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
 	end
 	-- alive people
 	for i,v in ipairs(humans) do
 		if flyOver(v) then
-			love.graphics.draw(gfx.human[1], math.floor(v[1][1]-32), math.floor(v[1][2]-32))
+			love.graphics.draw(gfx.human[1], math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
 		else
-			love.graphics.draw(gfx.human[2], math.floor(v[1][1]-32), math.floor(v[1][2]-32))
+			love.graphics.draw(gfx.human[2], math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
 		end
 	end
-	-- fly fly
-	love.graphics.draw(gfx.fly[currentFly], math.floor(fly[1][1]-32), math.floor(fly[1][2]-32))
-	--love.graphics.rectangle("fill", fly[1][1] - 32 - 96, fly[1][2] - 32 + 96, 64, 64 )
+	-- boss
+	if boss.active then
+		for i,v in pairs(boss.status) do
+			love.graphics.draw(boss.gfx[v][i], math.floor(boss.pos[1]) + boss.offset[i][1], math.floor(boss.pos[2] + boss.offset[i][2]))
+		end
+	end
+	-- fly
+	love.graphics.draw(gfx.fly[currentFly], math.floor(fly.pos[1]-32), math.floor(fly.pos[2]-32))
 end
 
 function love.keypressed(key, unicode)
@@ -121,6 +203,11 @@ function love.keypressed(key, unicode)
 	if key == 'q' or key == 'escape' then
                 love.event.push('q') -- quit the game 
         end
+	-- boss debug
+	if key == 'd' then
+		humans = {}
+		boss.active = true
+	end
 end
 
 function love.keyreleased(key, unicode)
@@ -139,6 +226,19 @@ function smashThem()
 			humansKilled = true
 		end
 	end
+	for i,v in pairs(boss.status) do
+		bossPart = {
+			pos = {
+				boss.pos[1] + boss.offset[i][1] + 32,
+				boss.pos[2] + boss.offset[i][2] + 32,
+			},
+		}
+		if flyOver(bossPart) and v == "fit" then
+			table.insert(puddles, bossPart)
+			v = "dead"
+		end
+	end
+	-- sound
 	if humansKilled then
 		love.audio.stop(sfx.splash)
 		love.audio.play(sfx.splash)
@@ -146,24 +246,25 @@ function smashThem()
 		love.audio.stop(sfx.suck)
 		love.audio.play(sfx.suck)
 	end
+	-- boss spawn check
+	if humansKilled and #humans == 0 then
+		boss.spawned = true
+	end
 end
 
-function flyOver(humanVec)
-	if humanVec[1][1] < fly[1][1] + 32 and humanVec[1][1] > fly[1][1] - 32 and humanVec[1][2] < fly[1][2] + 32 and humanVec[1][2] > fly[1][2] - 32 then
-		-- play scream as well
-		if sfx.scream[1]:isStopped() and sfx.scream[2]:isStopped() then
-			love.audio.play(sfx.scream[math.random(1,2)])
-		end
+function flyOver(targetVector)
+	if targetVector.pos[1] < fly.pos[1] + 32 and targetVector.pos[1] > fly.pos[1] - 32 and targetVector.pos[2] < fly.pos[2] + 32 and targetVector.pos[2] > fly.pos[2] - 32 then
 		return true
 	else
 		return false
 	end
 end
 
+-- moves human or boss
 function step(table, speed, dt)
 	return ({
-		table[1][1] + (table[2][1] * dt * speed),
-		table[1][2] + (table[2][2] * dt * speed)
+		table.pos[1] + (table.dir[1] * dt * speed),
+		table.pos[2] + (table.dir[2] * dt * speed),
 	})
 end
 
