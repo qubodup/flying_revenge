@@ -217,6 +217,9 @@ elseif status == "game" then
 end
 
 function love.keypressed(key, unicode)
+	if key == 'q' or key == 'escape' then
+		love.event.push('q') -- quit the game 
+	end
 	if status == "title" then
 		status = "instructions"
 	elseif status == "instructions" then
@@ -227,9 +230,6 @@ function love.keypressed(key, unicode)
 			spacePressed = true
 			love.audio.pause(sfx.bzzz)
 			smashThem()
-		end
-		if key == 'q' or key == 'escape' then
-			love.event.push('q') -- quit the game 
 		end
 		-- boss debug
 		if key == 'd' then
