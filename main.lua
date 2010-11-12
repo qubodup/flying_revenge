@@ -38,7 +38,8 @@ function love.load()
 			legRight = "fit",
 			legLeft = "fit",
 		},
-		speed = 35,
+		sppedInitial = 35, -- initial speed of boss
+		speed = speedInitial,
 		pos = { 256, 256 },
 		dir = {oneOrMinusOne(), oneOrMinusOne()},
 		gfx = {
@@ -100,6 +101,7 @@ function love.load()
 	flyFreakTimer = 0
 	flyAnimationTimer = 0
 	sfx.bzzz:setLooping( true )
+	muteBuzz = false
 end
 
 function love.update(dt)
@@ -217,13 +219,16 @@ elseif status == "game" then
 end
 
 function love.keypressed(key, unicode)
-	if key == 'q' or key == 'escape' then
+	if status ~= "title" and key == 'q' or key == 'escape' then
 		love.event.push('q') -- quit the game 
 	end
 	if status == "title" then
 		status = "instructions"
+		love.audio.play(sfx.boom)
 	elseif status == "instructions" then
 		status = "game"
+		sfx.boom:stop()
+		love.audio.play(sfx.boom)
 		love.audio.play(sfx.bzzz)
 	else
 		if key == ' ' then
@@ -236,13 +241,21 @@ function love.keypressed(key, unicode)
 			humans = {}
 			boss.stage = "active"
 		end
+		-- no buzz sound debug
+		if key == 's' then
+			muteBzzz = not muteBzzz
+			love.audio.pause(sfx.bzzz)
+			if not muteBzzz then love.audio.resume(sfx.bzzz) end
+		end
 	end
 end
 
 function love.keyreleased(key, unicode)
 	if key == ' ' then
 		spacePressed = false
-		love.audio.resume(sfx.bzzz)
+		if not muteBzzz then
+			love.audio.resume(sfx.bzzz)
+		end
 	end
 end
 end
@@ -269,10 +282,14 @@ function smashThem()
 				if boss.stage == "limbless" or ( i ~= "body" and i ~= "head" ) then
 					table.insert(puddles, bossPart)
 					boss.status[i] = "dead"
-					--if  then boss.stage = "limbless" end
+					-- slow down boss when limb is destroyed
+					if boss.stage ~= limbless then
+						boss.speed = boss.speed - (boss.speedInitial/4)
+					end
 				end
 			end
 		end
+		-- limbless check
 		if boss.status.armLeft == "dead" and  boss.status.armRight == "dead" and  boss.status.legLeft == "dead" and boss.status.legRight == "dead" then
 			boss.stage = "limbless"
 		end
