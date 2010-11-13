@@ -38,7 +38,7 @@ function love.load()
 			legRight = "fit",
 			legLeft = "fit",
 		},
-		sppedInitial = 35, -- initial speed of boss
+		speedInitial = 35, -- initial speed of boss
 		speed = speedInitial,
 		pos = { 256, 256 },
 		dir = {oneOrMinusOne(), oneOrMinusOne()},
