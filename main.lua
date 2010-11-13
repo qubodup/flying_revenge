@@ -39,7 +39,7 @@ function love.load()
 			legLeft = "fit",
 		},
 		speedInitial = 35, -- initial speed of boss
-		speed = speedInitial,
+		speed = 35,
 		pos = { 256, 256 },
 		dir = {oneOrMinusOne(), oneOrMinusOne()},
 		gfx = {
@@ -283,7 +283,7 @@ function smashThem()
 					table.insert(puddles, bossPart)
 					boss.status[i] = "dead"
 					-- slow down boss when limb is destroyed
-					if boss.stage ~= limbless then
+					if boss.stage ~= "limbless" then
 						boss.speed = boss.speed - (boss.speedInitial/4)
 					end
 				end
