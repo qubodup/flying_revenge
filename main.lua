@@ -4,6 +4,7 @@ function love.load()
 
 	-- game status can be title, instructions or game
 	status = "title"
+	font = love.graphics.newImageFont("font-handirt-padding.png", "0123456789.,:;()abcdefghijklmnopqrstuvwxyz")
 	gfx = {
 		title = love.graphics.newImage("title.png"),
 		instructions = love.graphics.newImage("instructions.png"),
