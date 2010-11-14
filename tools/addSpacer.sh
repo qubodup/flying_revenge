@@ -10,7 +10,7 @@ else
 	TEMPNAME="temp"
 
 	# split
-	convert "$1" -crop 16x16 "$TEMPNAME.png"
+	convert "$1" -crop $WIDTHx$HEIGHT "$TEMPNAME.png"
 
 	# add border/frame/extent
 	for i in $TEMPNAME*; do convert "$i" -background LimeGreen -compose Copy -gravity west -splice 1x0 "$i"; done
