@@ -162,11 +162,11 @@ if status == "game" then
 		end
 		-- border direction changes
 		newPos = step(fly, fly.speed, dt)
-		if newPos[1] < 128 and fly.dir[1] == -1 or newPos[1] > 530 and fly.dir[1] == 1 then
+		if newPos[1] < 0 and fly.dir[1] == -1 or newPos[1] > 512 and fly.dir[1] == 1 then
 			fly.dir[1] = -fly.dir[1]
 			newPosNeeded = true
 		end
-		if newPos[2] < -18 and fly.dir[2] == -1 or newPos[2] > 384 and fly.dir[2] == 1 then
+		if newPos[2] < 0 and fly.dir[2] == -1 or newPos[2] > 502 and fly.dir[2] == 1 then
 			fly.dir[2] = -fly.dir[2]
 			newPosNeeded = true
 		end
