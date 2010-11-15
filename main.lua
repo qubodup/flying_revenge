@@ -172,13 +172,7 @@ if status == "game" then
 		fly.dir = {oneOrMinusOne(), oneOrMinusOne()}
 		flyFreakTimer = 0
 	end
-	if not spacePressed then -- change fly movement only when space not pressed
-		-- animation
-		flyAnimationTimer = flyAnimationTimer + dt
-		if flyAnimationTimer > .1 then
-			currentFly = math.mod(currentFly,2)+1
-			flyAnimationTimer = math.mod(flyAnimationTimer - .2,.2)
-		end
+	if not spacePressed then -- check for borders only when not sucking
 		-- border direction changes
 		newPos = step(fly, fly.speed, dt)
 		if newPos[1] < 0 and fly.dir[1] == -1 or newPos[1] > 512 and fly.dir[1] == 1 then
@@ -199,6 +193,13 @@ if status == "game" then
 		if flyOver(v) and sfx.scream[1]:isStopped() and sfx.scream[2]:isStopped() then
 			love.audio.play(sfx.scream[math.random(1,2)])
 		end
+	end
+end
+if not spacePressed then -- animation should run when not sucking
+	flyAnimationTimer = flyAnimationTimer + dt
+	if flyAnimationTimer > .1 then
+		currentFly = math.mod(currentFly,2)+1
+		flyAnimationTimer = math.mod(flyAnimationTimer - .2,.2)
 	end
 end
 end
@@ -364,5 +365,6 @@ function gameOver()
 	local seconds = math.floor(score.time%60)
 	if seconds < 10 then seconds = "0"..seconds end
 	textOver[2].text = math.floor(score.time/60)..":"..seconds..textOver[2].text
+	
 	status = "gameover"
 end
