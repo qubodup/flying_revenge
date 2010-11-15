@@ -5,6 +5,7 @@ function love.load()
 	-- game status can be title, instructions or game
 	status = "title"
 	font = love.graphics.newImageFont("font-handirt-padding.png", "0123456789.,:;()abcdefghijklmnopqrstuvwxyz")
+	love.graphics.setFont(font)
 	gfx = {
 		title = love.graphics.newImage("title.png"),
 		instructions = love.graphics.newImage("instructions.png"),
@@ -220,7 +221,7 @@ elseif status == "game" then
 end
 
 function love.keypressed(key, unicode)
-	if status ~= "title" and key == 'q' or key == 'escape' then
+	if status ~= "title" and (key == 'q' or key == 'escape') then
 		love.event.push('q') -- quit the game 
 	end
 	if status == "title" then
