@@ -187,37 +187,38 @@ end
 end
 
 function love.draw()
-if status == "title" then
-	love.graphics.draw(gfx.title, 128, 112)
-elseif status == "instructions" then
-	love.graphics.draw(gfx.instructions, 128, 112)
-elseif status == "game" then
-	-- bg, causes slowdown :(
-	--[[ for i = 0, 512, 32 do
-		for j = 0, 512, 32 do
-			love.graphics.draw(gfx.bg, i, j)
+	if status == "title" then
+		love.graphics.draw(gfx.title, 128, 112)
+	elseif status == "instructions" then
+		love.graphics.draw(gfx.instructions, 128, 112)
+	elseif status == "game" then
+		-- bg, causes slowdown :(
+		--[[ for i = 0, 512, 32 do
+			for j = 0, 512, 32 do
+				love.graphics.draw(gfx.bg, i, j)
+			end
+		end ]]--
+		-- dead people
+		for i,v in ipairs(puddles) do
+			love.graphics.draw(gfx.blood, math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
 		end
-	end ]]--
-	-- dead people
-	for i,v in ipairs(puddles) do
-		love.graphics.draw(gfx.blood, math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
-	end
-	-- alive people
-	for i,v in ipairs(humans) do
-		if flyOver(v) then
-			love.graphics.draw(gfx.human[1], math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
-		else
-			love.graphics.draw(gfx.human[2], math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
+		-- alive people
+		for i,v in ipairs(humans) do
+			if flyOver(v) then
+				love.graphics.draw(gfx.human[1], math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
+			else
+				love.graphics.draw(gfx.human[2], math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
+			end
 		end
-	end
-	-- boss
-	if boss.stage ~= "sleeping" then
-		for i,v in pairs(boss.status) do
-			love.graphics.draw(boss.gfx[v][i], math.floor(boss.pos[1]) + boss.offset[i][1], math.floor(boss.pos[2] + boss.offset[i][2]))
+		-- boss
+		if boss.stage ~= "sleeping" then
+			for i,v in pairs(boss.status) do
+				love.graphics.draw(boss.gfx[v][i], math.floor(boss.pos[1]) + boss.offset[i][1], math.floor(boss.pos[2] + boss.offset[i][2]))
+			end
 		end
+		-- fly
+		love.graphics.draw(gfx.fly[currentFly][string.gsub("a"..fly.dir[1]..fly.dir[2],"-","_")], math.floor(fly.pos[1]-32), math.floor(fly.pos[2]-32))
 	end
-	-- fly
-	love.graphics.draw(gfx.fly[currentFly][string.gsub("a"..fly.dir[1]..fly.dir[2],"-","_")], math.floor(fly.pos[1]-32), math.floor(fly.pos[2]-32))
 end
 
 function love.keypressed(key, unicode)
@@ -259,7 +260,6 @@ function love.keyreleased(key, unicode)
 			love.audio.resume(sfx.bzzz)
 		end
 	end
-end
 end
 
 function smashThem()
