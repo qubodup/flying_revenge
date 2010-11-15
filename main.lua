@@ -2,9 +2,10 @@ function love.load()
 	math.randomseed( os.time() )
 	love.graphics.setBackgroundColor( 107, 186, 112 )
 
-	-- game status can be title, instructions or game
+	-- game status can be title, instructions, game or gameover
 	status = "title"
-	font = love.graphics.newImageFont("font-handirt-padding.png", "0123456789.,:;()abcdefghijklmnopqrstuvwxyz")
+	gameoverTimer = 0
+	font = love.graphics.newImageFont("font-handirt-padding.png", "0123456789.,:;()abcdefghijklmnopqrstuvwxyz ")
 	love.graphics.setFont(font)
 	gfx = {
 		title = love.graphics.newImage("title.png"),
@@ -31,7 +32,7 @@ function love.load()
 		bg = love.graphics.newImage("smear.png"),
 	}
 	boss = {
-		stage = "sleeping", -- can be sleeping, active or limbless
+		stage = "sleeping", -- can be sleeping, active, limbless or dead
 		status = {
 			head = "fit",
 			body = "fit",
@@ -104,10 +105,26 @@ function love.load()
 	flyAnimationTimer = 0
 	sfx.bzzz:setLooping( true )
 	muteBuzz = false
+	textOver = {
+		{
+		pos = {32,128},
+		text = " sucktions preformed",
+		},
+		{
+		pos = {32, 256},
+		text = " min:sec played",
+		},
+	}
+	score = { -- consists of sucks and time
+		time = 0,
+		sucks = 0,
+	}
 end
 
 function love.update(dt)
 if status == "game" then
+	-- score time counter
+	score.time = score.time + dt
 	-- humans
 	for i,v in ipairs(humans) do
 		newPosNeeded = false
@@ -126,7 +143,7 @@ if status == "game" then
 		v.pos = newPos
 	end
 	-- boss movement 
-	if boss.stage ~= "sleeping" and boss.stage ~= "dead" then
+	if boss.stage == "active" then
 		newPosNeeded = false
 		newPos = step(boss, boss.speed, dt)
 		if newPos[1] < 96 and boss.dir[1] == -1 or newPos[1] > 512 - 96 and boss.dir[1] == 1 then
@@ -191,7 +208,7 @@ function love.draw()
 		love.graphics.draw(gfx.title, 128, 112)
 	elseif status == "instructions" then
 		love.graphics.draw(gfx.instructions, 128, 112)
-	elseif status == "game" then
+	elseif status == "game" or status == "gameover" then
 		-- bg, causes slowdown :(
 		--[[ for i = 0, 512, 32 do
 			for j = 0, 512, 32 do
@@ -219,6 +236,11 @@ function love.draw()
 		-- fly
 		love.graphics.draw(gfx.fly[currentFly][string.gsub("a"..fly.dir[1]..fly.dir[2],"-","_")], math.floor(fly.pos[1]-32), math.floor(fly.pos[2]-32))
 	end
+	if status == "gameover" then
+		for i,v in ipairs(textOver) do
+			love.graphics.print(v.text, v.pos[1], v.pos[2])
+		end
+	end
 end
 
 function love.keypressed(key, unicode)
@@ -238,11 +260,18 @@ function love.keypressed(key, unicode)
 			spacePressed = true
 			love.audio.pause(sfx.bzzz)
 			smashThem()
+			score.sucks = score.sucks + 1
 		end
 		-- boss debug
 		if key == 'd' then
 			humans = {}
 			boss.stage = "active"
+		end
+		-- game over debug
+		if key == 'g' then
+			humans = {}
+			boss.stage = "active"
+			gameOver()
 		end
 		-- no buzz sound debug
 		if key == 's' then
@@ -306,7 +335,7 @@ function smashThem()
 	end
 	-- boss spawn check
 	if humansKilled and #humans == 0 then
-		boss.stage = active
+		boss.stage = "active"
 	end
 end
 
@@ -328,4 +357,12 @@ end
 
 function oneOrMinusOne()
 	if math.random(1, 2) == 2 then return(-1) else return(1) end
+end
+
+function gameOver()
+	textOver[1].text = math.floor(score.sucks)..textOver[1].text
+	local seconds = math.floor(score.time%60)
+	if seconds < 10 then seconds = "0"..seconds end
+	textOver[2].text = math.floor(score.time/60)..":"..seconds..textOver[2].text
+	status = "gameover"
 end
