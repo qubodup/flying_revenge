@@ -4,7 +4,10 @@ function love.load()
 
 	-- game status can be title, instructions, game or gameover
 	status = "title"
-	gameoverTimer = 0
+	timerGameover = 0
+	gameoverStep = {false,false,false}
+	timerPreGameover = 0 -- for the seconds after boss death, before gameover
+	timerPreGameoverLimit = 2
 	font = love.graphics.newImageFont("font-handirt-padding.png", "0123456789.,:;()abcdefghijklmnopqrstuvwxyz ")
 	love.graphics.setFont(font)
 	gfx = {
@@ -88,7 +91,17 @@ function love.load()
 		},
 		boom = love.audio.newSource("boom.ogg", stream),
 		kaboom = love.audio.newSource("kaboom.ogg", stream),
+		boss = {
+			pain = {
+				love.audio.newSource("scream1.ogg", stream),
+				love.audio.newSource("scream2.ogg", stream),
+			},
+			head = love.audio.newSource("scream1.ogg", stream),
+			body = love.audio.newSource("scream2.ogg", stream),
+		},
 	}
+	sfx.boss.pain[1]:setPitch(.5)
+	sfx.boss.pain[2]:setPitch(.5)
 	humanSpeed = 25
 	fly = {
 		speed = 100,
@@ -108,11 +121,11 @@ function love.load()
 	textOver = {
 		{
 		pos = {32,128},
-		text = " sucktions preformed",
+		text = " sucktions performed",
 		},
 		{
 		pos = {32, 256},
-		text = " min:sec played",
+		text = " minutes played",
 		},
 	}
 	score = { -- consists of sucks and time
@@ -195,12 +208,30 @@ if status == "game" then
 		end
 	end
 end
-if not spacePressed then -- animation should run when not sucking
+if not spacePressed then -- fly animation should run when not sucking
 	flyAnimationTimer = flyAnimationTimer + dt
 	if flyAnimationTimer > .1 then
 		currentFly = math.mod(currentFly,2)+1
 		flyAnimationTimer = math.mod(flyAnimationTimer - .2,.2)
 	end
+end
+-- pre-gameover timerrrrrrrrrrr (sorry, listening to some dnb while writing this comment)
+if boss.stage == "dead" and status == "game" then
+	gameOver()
+elseif status == "gameover" then
+	timerGameover = timerGameover + dt
+	if timerGameover > 3.5 and not gameoverStep[3] then
+		love.audio.play(sfx.kaboom)
+		gameoverStep[3] = true
+	elseif timerGameover > 2 and not gameoverStep[2] then
+		love.audio.play(sfx.boom)
+		gameoverStep[2] = true
+	elseif timerGameover > 2 and not gameoverStep[1] then
+		love.audio.play(sfx.boom)
+		gameoverStep[1] = true
+		love.audio.resume(sfx.bzzz)
+	end
+
 end
 end
 
@@ -239,7 +270,9 @@ function love.draw()
 	end
 	if status == "gameover" then
 		for i,v in ipairs(textOver) do
-			love.graphics.print(v.text, v.pos[1], v.pos[2])
+			if i == 1 or (i == 2 and timerGameover > 1) then
+				love.graphics.print(v.text, v.pos[1], v.pos[2])
+			end
 		end
 	end
 end
@@ -257,7 +290,7 @@ function love.keypressed(key, unicode)
 		love.audio.play(sfx.boom)
 		love.audio.play(sfx.bzzz)
 	else
-		if key == ' ' then
+		if key == ' ' and status ~= "gameover" then
 			spacePressed = true
 			love.audio.pause(sfx.bzzz)
 			smashThem()
@@ -294,6 +327,7 @@ end
 
 function smashThem()
 	humansKilled = false
+	bossHurt = false
 	for i,v in ipairs(humans) do
 		if flyOver(v) then
 			table.insert(puddles, v)
@@ -317,12 +351,20 @@ function smashThem()
 					-- slow down boss when limb is destroyed
 					if boss.stage ~= "limbless" then
 						boss.speed = boss.speed - (boss.speedInitial/4)
+						bossHurt = true
+					else
+						boss.stage = "dead"
+						if boss.status.head == "dead" then
+							love.audio.play(sfx.boss.head)
+						else
+							love.audio.play(sfx.boss.pain[2])
+						end
 					end
 				end
 			end
 		end
 		-- limbless check
-		if boss.status.armLeft == "dead" and  boss.status.armRight == "dead" and  boss.status.legLeft == "dead" and boss.status.legRight == "dead" then
+		if boss.stage == "active" and (boss.status.armLeft == "dead" and  boss.status.armRight == "dead" and  boss.status.legLeft == "dead" and boss.status.legRight == "dead") then
 			boss.stage = "limbless"
 		end
 	end
@@ -330,6 +372,9 @@ function smashThem()
 	if humansKilled then
 		love.audio.stop(sfx.splash)
 		love.audio.play(sfx.splash)
+	elseif bossHurt then
+		love.audio.stop(sfx.boss.pain[1])
+		love.audio.play(sfx.boss.pain[1])
 	else
 		love.audio.stop(sfx.suck)
 		love.audio.play(sfx.suck)
@@ -338,6 +383,11 @@ function smashThem()
 	if humansKilled and #humans == 0 then
 		boss.stage = "active"
 	end
+end
+
+-- debug fly positioning via mouse 
+function love.mousepressed( x, y, button )
+	fly.pos={ x, y }
 end
 
 function flyOver(targetVector)
@@ -349,7 +399,7 @@ function flyOver(targetVector)
 end
 
 -- moves human or boss
-function step(table, speed, dt)
+function step( table, speed, dt )
 	return ({
 		table.pos[1] + (table.dir[1] * dt * speed),
 		table.pos[2] + (table.dir[2] * dt * speed),
@@ -365,6 +415,6 @@ function gameOver()
 	local seconds = math.floor(score.time%60)
 	if seconds < 10 then seconds = "0"..seconds end
 	textOver[2].text = math.floor(score.time/60)..":"..seconds..textOver[2].text
-	
 	status = "gameover"
+	love.audio.pause(sfx.bzzz)
 end
