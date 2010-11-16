@@ -115,6 +115,10 @@ function love.load()
 	puddles = {}
 	spacePressed = false
 	flyFreakTimer = 0
+	flyFreakTimerLimit = 1
+	flyFreakTimerMax = 2
+	-- killing one human makes fly change dir less (by flyFreakTimerIncrease)
+	flyFreakTimerIncrease = (flyFreakTimerMax - flyFreakTimerMax)/#humans
 	flyAnimationTimer = 0
 	sfx.bzzz:setLooping( true )
 	muteBuzz = false
@@ -181,7 +185,7 @@ if status == "game" then
 	-- fly
 	-- random direction changes (are supposed to happen while stopping
 	flyFreakTimer = flyFreakTimer + (dt * (1 + math.random()))
-	if flyFreakTimer > 1 then
+	if flyFreakTimer > flyFreakTimerLimit then
 		fly.dir = {oneOrMinusOne(), oneOrMinusOne()}
 		flyFreakTimer = 0
 	end
@@ -372,6 +376,7 @@ function smashThem()
 	if humansKilled then
 		love.audio.stop(sfx.splash)
 		love.audio.play(sfx.splash)
+		flyFreakTimer = flyFreakTimer + flyFreakTimerIncrease
 	elseif bossHurt then
 		love.audio.stop(sfx.boss.pain[1])
 		love.audio.play(sfx.boss.pain[1])
