@@ -5,7 +5,7 @@ function love.load()
 	-- game status can be title, instructions, game or gameover
 	status = "title"
 	timerGameover = 0
-	gameoverStep = {false,false,false}
+	gameoverStep = {false,false,false,false,false}
 	timerPreGameover = 0 -- for the seconds after boss death, before gameover
 	timerPreGameoverLimit = 2
 	font = love.graphics.newImageFont("font-handirt-padding.png", "0123456789.,:;()abcdefghijklmnopqrstuvwxyz ")
@@ -124,12 +124,20 @@ function love.load()
 	muteBuzz = false
 	textOver = {
 		{
-		pos = {32,128},
+		pos = {32,96},
 		text = " sucktions performed",
 		},
 		{
-		pos = {32, 256},
+		pos = {32, 96 + 96},
 		text = " minutes played",
+		},
+		{
+		pos = {32, 96 + 96*2},
+		text = "game made with love2d.org",
+		},
+		{
+		pos = {32, 96 + 96*3},
+		text = "restart by pressing space",
 		},
 	}
 	score = { -- consists of sucks and time
@@ -139,104 +147,109 @@ function love.load()
 end
 
 function love.update(dt)
-if status == "game" then
-	-- score time counter
-	score.time = score.time + dt
-	-- humans
-	for i,v in ipairs(humans) do
-		newPosNeeded = false
-		newPos = step(v, humanSpeed, dt)
-		if newPos[1] < 32 and v.dir[1] == -1 or newPos[1] > 480 and v.dir[1] == 1 then
-			v.dir[1] = -v.dir[1] -- reverse direction
-			newPosNeeded = true
+	if status == "game" then
+		-- score time counter
+		score.time = score.time + dt
+		-- humans
+		for i,v in ipairs(humans) do
+			newPosNeeded = false
+			newPos = step(v, humanSpeed, dt)
+			if newPos[1] < 32 and v.dir[1] == -1 or newPos[1] > 480 and v.dir[1] == 1 then
+				v.dir[1] = -v.dir[1] -- reverse direction
+				newPosNeeded = true
+			end
+			if newPos[2] < 32 and v.dir[2] == -1 or newPos[2] > 480 and v.dir[2] == 1 then
+				v.dir[2] = -v.dir[2] -- reverse direction
+				newPosNeeded = true
+			end
+			if newPosNeeded then
+				newPos = step(v, humanSpeed, dt) -- recalculation
+			end
+			v.pos = newPos
 		end
-		if newPos[2] < 32 and v.dir[2] == -1 or newPos[2] > 480 and v.dir[2] == 1 then
-			v.dir[2] = -v.dir[2] -- reverse direction
-			newPosNeeded = true
+		-- boss movement 
+		if boss.stage == "active" then
+			newPosNeeded = false
+			newPos = step(boss, boss.speed, dt)
+			if newPos[1] < 96 and boss.dir[1] == -1 or newPos[1] > 512 - 96 and boss.dir[1] == 1 then
+				boss.dir[1] = -boss.dir[1] -- reverse direction
+				newPosNeeded = true
+			end
+			if newPos[2] < 96 and boss.dir[2] == -1 or newPos[2] > 512 - 96 and boss.dir[2] == 1 then
+				boss.dir[2] = -boss.dir[2] -- reverse direction
+				newPosNeeded = true
+			end
+			if newPosNeeded then
+				newPos = step(boss, boss.speed, dt) -- recalculation
+			end
+			boss.pos = newPos
+			-- random direction changes
+			boss.freak.timer = boss.freak.timer + (dt * (1 + math.random()))
+			if boss.freak.timer > boss.freak.limit then
+				boss.dir = {oneOrMinusOne(), oneOrMinusOne()}
+				boss.freak.timer = 0
+			end
 		end
-		if newPosNeeded then
-			newPos = step(v, humanSpeed, dt) -- recalculation
+		-- fly
+		-- random direction changes (are supposed to happen while stopping
+		flyFreakTimer = flyFreakTimer + (dt * (1 + math.random()))
+		if flyFreakTimer > flyFreakTimerLimit then
+			fly.dir = {oneOrMinusOne(), oneOrMinusOne()}
+			flyFreakTimer = 0
 		end
-		v.pos = newPos
-	end
-	-- boss movement 
-	if boss.stage == "active" then
-		newPosNeeded = false
-		newPos = step(boss, boss.speed, dt)
-		if newPos[1] < 96 and boss.dir[1] == -1 or newPos[1] > 512 - 96 and boss.dir[1] == 1 then
-			boss.dir[1] = -boss.dir[1] -- reverse direction
-			newPosNeeded = true
-		end
-		if newPos[2] < 96 and boss.dir[2] == -1 or newPos[2] > 512 - 96 and boss.dir[2] == 1 then
-			boss.dir[2] = -boss.dir[2] -- reverse direction
-			newPosNeeded = true
-		end
-		if newPosNeeded then
-			newPos = step(boss, boss.speed, dt) -- recalculation
-		end
-		boss.pos = newPos
-		-- random direction changes
-		boss.freak.timer = boss.freak.timer + (dt * (1 + math.random()))
-		if boss.freak.timer > boss.freak.limit then
-			boss.dir = {oneOrMinusOne(), oneOrMinusOne()}
-			boss.freak.timer = 0
-		end
-	end
-	-- fly
-	-- random direction changes (are supposed to happen while stopping
-	flyFreakTimer = flyFreakTimer + (dt * (1 + math.random()))
-	if flyFreakTimer > flyFreakTimerLimit then
-		fly.dir = {oneOrMinusOne(), oneOrMinusOne()}
-		flyFreakTimer = 0
-	end
-	if not spacePressed then -- check for borders only when not sucking
-		-- border direction changes
-		newPos = step(fly, fly.speed, dt)
-		if newPos[1] < 0 and fly.dir[1] == -1 or newPos[1] > 512 and fly.dir[1] == 1 then
-			fly.dir[1] = -fly.dir[1]
-			newPosNeeded = true
-		end
-		if newPos[2] < 0 and fly.dir[2] == -1 or newPos[2] > 502 and fly.dir[2] == 1 then
-			fly.dir[2] = -fly.dir[2]
-			newPosNeeded = true
-		end
-		if newPosNeeded then
+		if not spacePressed then -- check for borders only when not sucking
+			-- border direction changes
 			newPos = step(fly, fly.speed, dt)
+			if newPos[1] < 0 and fly.dir[1] == -1 or newPos[1] > 512 and fly.dir[1] == 1 then
+				fly.dir[1] = -fly.dir[1]
+				newPosNeeded = true
+			end
+			if newPos[2] < 0 and fly.dir[2] == -1 or newPos[2] > 502 and fly.dir[2] == 1 then
+				fly.dir[2] = -fly.dir[2]
+				newPosNeeded = true
+			end
+			if newPosNeeded then
+				newPos = step(fly, fly.speed, dt)
+			end
+			fly.pos = newPos
 		end
-		fly.pos = newPos
-	end
-	-- fly over humans scream
-	for i,v in ipairs(humans) do
-		if flyOver(v) and sfx.scream[1]:isStopped() and sfx.scream[2]:isStopped() then
-			love.audio.play(sfx.scream[math.random(1,2)])
+		-- fly over humans scream
+		for i,v in ipairs(humans) do
+			if flyOver(v) and sfx.scream[1]:isStopped() and sfx.scream[2]:isStopped() then
+				love.audio.play(sfx.scream[math.random(1,2)])
+			end
 		end
 	end
-end
-if not spacePressed then -- fly animation should run when not sucking
-	flyAnimationTimer = flyAnimationTimer + dt
-	if flyAnimationTimer > .1 then
-		currentFly = math.mod(currentFly,2)+1
-		flyAnimationTimer = math.mod(flyAnimationTimer - .2,.2)
+	if not spacePressed then -- fly animation should run when not sucking
+		flyAnimationTimer = flyAnimationTimer + dt
+		if flyAnimationTimer > .1 then
+			currentFly = math.mod(currentFly,2)+1
+			flyAnimationTimer = math.mod(flyAnimationTimer - .2,.2)
+		end
 	end
-end
--- pre-gameover timerrrrrrrrrrr (sorry, listening to some dnb while writing this comment)
-if boss.stage == "dead" and status == "game" then
-	gameOver()
-elseif status == "gameover" then
-	timerGameover = timerGameover + dt
-	if timerGameover > 3.5 and not gameoverStep[3] then
-		love.audio.play(sfx.kaboom)
-		gameoverStep[3] = true
-	elseif timerGameover > 2 and not gameoverStep[2] then
-		love.audio.play(sfx.boom)
-		gameoverStep[2] = true
-	elseif timerGameover > 2 and not gameoverStep[1] then
-		love.audio.play(sfx.boom)
-		gameoverStep[1] = true
-		love.audio.resume(sfx.bzzz)
+	-- pre-gameover timerrrrrrrrrrr (sorry, listening to some dnb while writing this comment)
+	if boss.stage == "dead" and status == "game" then
+		gameOver()
+	elseif status == "gameover" then
+		timerGameover = timerGameover + dt
+		if timerGameover > 5.5 and not gameoverStep[5] then
+			love.audio.play(sfx.kaboom)
+			gameoverStep[5] = true
+		elseif timerGameover > 4 and not gameoverStep[4] then
+			love.audio.play(sfx.boom)
+			gameoverStep[4] = true
+		elseif timerGameover > 3 and not gameoverStep[3] then
+			love.audio.play(sfx.boom)
+			gameoverStep[3] = true
+		elseif timerGameover > 2 and not gameoverStep[2] then
+			love.audio.play(sfx.boom)
+			gameoverStep[2] = true
+		elseif timerGameover > 1 and not gameoverStep[1] then
+			love.audio.play(sfx.boom)
+			gameoverStep[1] = true
+			love.audio.resume(sfx.bzzz)
+		end
 	end
-
-end
 end
 
 function love.draw()
@@ -274,12 +287,13 @@ function love.draw()
 	end
 	if status == "gameover" then
 		for i,v in ipairs(textOver) do
-			if i == 1 or (i == 2 and timerGameover > 1) then
+			if gameoverStep[i] then
 				love.graphics.print(v.text, v.pos[1], v.pos[2])
 			end
 		end
 	end
 end
+
 
 function love.keypressed(key, unicode)
 	if status ~= "title" and (key == 'q' or key == 'escape') then
@@ -299,6 +313,12 @@ function love.keypressed(key, unicode)
 			love.audio.pause(sfx.bzzz)
 			smashThem()
 			score.sucks = score.sucks + 1
+		-- skip gameoverStep timer
+		elseif key == ' ' and not gameoverStep[5] then
+			timerGameover = math.floor(timerGameover + 1)
+		-- restart game
+		elseif key == ' ' and gameoverStep[4] then
+			love.load()
 		end
 		-- boss debug
 		if key == 'd' then
@@ -417,9 +437,10 @@ end
 
 function gameOver()
 	textOver[1].text = math.floor(score.sucks)..textOver[1].text
+	-- calc/format played time
 	local seconds = math.floor(score.time%60)
 	if seconds < 10 then seconds = "0"..seconds end
 	textOver[2].text = math.floor(score.time/60)..":"..seconds..textOver[2].text
 	status = "gameover"
-	love.audio.pause(sfx.bzzz)
+	--love.audio.pause(sfx.bzzz)
 end
