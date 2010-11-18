@@ -5,7 +5,7 @@ function love.load()
 	-- game status can be title, instructions, game or gameover
 	status = "title"
 	timerGameover = 0
-	gameoverStep = {false,false,false,false,false}
+	gameoverStep = {false,false,false,false,false,false}
 	timerPreGameover = 0 -- for the seconds after boss death, before gameover
 	timerPreGameoverLimit = 2
 	font = love.graphics.newImageFont("font-handirt-padding.png", "0123456789.,:;()abcdefghijklmnopqrstuvwxyz ")
@@ -33,6 +33,13 @@ function love.load()
 		},
 		blood = love.graphics.newImage("blood.gif"),
 		bg = love.graphics.newImage("smear.png"),
+		explosion = {
+			love.graphics.newImage("nexplosion1.png"),
+			love.graphics.newImage("nexplosion2.png"),
+			love.graphics.newImage("nexplosion3.png"),
+			love.graphics.newImage("nexplosion4.png"),
+			love.graphics.newImage("nexplosion5.png"),
+		},
 	}
 	boss = {
 		stage = "sleeping", -- can be sleeping, active, limbless or dead
@@ -80,6 +87,8 @@ function love.load()
 			limit = 2,
 		},
 	}
+	timingExplosion = {0,.75,1.5,3,5,8}
+	currentExplosion = 0
 	currentFly = 1
 	sfx = {
 		bzzz = love.audio.newSource("bzzz.ogg", stream),
@@ -124,19 +133,23 @@ function love.load()
 	muteBuzz = false
 	textOver = {
 		{
-		pos = {32,96},
+		pos = {32,48},
+		text = "you showed those humans!"
+		},
+		{
+		pos = {32,96 + 48},
 		text = " sucktions performed",
 		},
 		{
-		pos = {32, 96 + 96},
+		pos = {32, 96 + 96 + 48},
 		text = " minutes played",
 		},
 		{
-		pos = {32, 96 + 96*2},
+		pos = {32, 96 + 96*2 + 48},
 		text = "game made with love2d.org",
 		},
 		{
-		pos = {32, 96 + 96*3},
+		pos = {32, 96 + 96*3 + 48},
 		text = "restart by pressing space",
 		},
 	}
@@ -232,8 +245,11 @@ function love.update(dt)
 		gameOver()
 	elseif status == "gameover" then
 		timerGameover = timerGameover + dt
-		if timerGameover > 5.5 and not gameoverStep[5] then
+		if timerGameover > 6.5 and not gameoverStep[6] then
 			love.audio.play(sfx.kaboom)
+			gameoverStep[6] = true
+		elseif timerGameover > 5 and not gameoverStep[5] then
+			love.audio.play(sfx.boom)
 			gameoverStep[5] = true
 		elseif timerGameover > 4 and not gameoverStep[4] then
 			love.audio.play(sfx.boom)
@@ -248,6 +264,13 @@ function love.update(dt)
 			love.audio.play(sfx.boom)
 			gameoverStep[1] = true
 			love.audio.resume(sfx.bzzz)
+		end
+		-- explosion animation
+		if gameoverStep[6] and currentExplosion < 6 then
+			if timerGameover > timingExplosion[currentExplosion + 1] + 6.5 then
+				currentExplosion = currentExplosion + 1
+			end
+			sfx.bzzz:stop()
 		end
 	end
 end
@@ -283,13 +306,20 @@ function love.draw()
 			end
 		end
 		-- fly
-		love.graphics.draw(gfx.fly[currentFly][string.gsub("a"..fly.dir[1]..fly.dir[2],"-","_")], math.floor(fly.pos[1]-32), math.floor(fly.pos[2]-32))
+		if currentExplosion < 1 then
+			love.graphics.draw(gfx.fly[currentFly][string.gsub("a"..fly.dir[1]..fly.dir[2],"-","_")], math.floor(fly.pos[1]-32), math.floor(fly.pos[2]-32))
+		end
 	end
 	if status == "gameover" then
+		-- gameover text
 		for i,v in ipairs(textOver) do
 			if gameoverStep[i] then
 				love.graphics.print(v.text, v.pos[1], v.pos[2])
 			end
+		end
+		-- explosion animation
+		if gameoverStep[6] and currentExplosion > 0 and currentExplosion < 6 then
+				love.graphics.draw(gfx.explosion[currentExplosion],fly.pos[1] - 64 ,fly.pos[2] - 96)
 		end
 	end
 end
@@ -314,10 +344,10 @@ function love.keypressed(key, unicode)
 			smashThem()
 			score.sucks = score.sucks + 1
 		-- skip gameoverStep timer
-		elseif key == ' ' and not gameoverStep[5] then
+		elseif key == ' ' and not gameoverStep[6] then
 			timerGameover = math.floor(timerGameover + 1)
 		-- restart game
-		elseif key == ' ' and gameoverStep[4] then
+		elseif key == ' ' and gameoverStep[5] then
 			love.load()
 		end
 		-- boss debug
@@ -436,11 +466,11 @@ function oneOrMinusOne()
 end
 
 function gameOver()
-	textOver[1].text = math.floor(score.sucks)..textOver[1].text
+	textOver[2].text = math.floor(score.sucks)..textOver[2].text
 	-- calc/format played time
 	local seconds = math.floor(score.time%60)
 	if seconds < 10 then seconds = "0"..seconds end
-	textOver[2].text = math.floor(score.time/60)..":"..seconds..textOver[2].text
+	textOver[3].text = math.floor(score.time/60)..":"..seconds..textOver[3].text
 	status = "gameover"
 	--love.audio.pause(sfx.bzzz)
 end
