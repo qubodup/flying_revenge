@@ -5,6 +5,8 @@ function love.load()
 	-- game status can be title, instructions, game or gameover
 	status = "title"
 	timerGameover = 0
+	-- game mode refers to controls and random movement. it can be easy or hard.
+	gameMode = "easy"
 	gameoverStep = {false,false,false,false,false,false}
 	timerPreGameover = 0 -- for the seconds after boss death, before gameover
 	timerPreGameoverLimit = 2
@@ -205,10 +207,21 @@ function love.update(dt)
 		end
 		-- fly
 		-- random direction changes (are supposed to happen while stopping
-		flyFreakTimer = flyFreakTimer + (dt * (1 + math.random()))
-		if flyFreakTimer > flyFreakTimerLimit then
-			fly.dir = {oneOrMinusOne(), oneOrMinusOne()}
-			flyFreakTimer = 0
+		if gameMode == "hard" then
+			flyFreakTimer = flyFreakTimer + (dt * (1 + math.random()))
+			if flyFreakTimer > flyFreakTimerLimit then
+				fly.dir = {oneOrMinusOne(), oneOrMinusOne()}
+				flyFreakTimer = 0
+			end
+		elseif gameMode == "easy" then
+			-- in easy mode, movement only changes while holding down space
+			if spacePressed then
+				flyFreakTimer = flyFreakTimer + dt
+				if flyFreakTimer > flyFreakTimerLimit then
+					fly.dir = changeDir(fly.dir)
+					flyFreakTimer = 0
+				end
+			end
 		end
 		if not spacePressed then -- check for borders only when not sucking
 			-- border direction changes
@@ -463,6 +476,17 @@ end
 
 function oneOrMinusOne()
 	if math.random(1, 2) == 2 then return(-1) else return(1) end
+end
+
+-- changes a direction vector randomly
+function changeDir(currVec)
+	local newVec = {oneOrMinusOne(),0}
+	if newVec[1] == currVec[1] then
+		newVec = {newVec[1], -1 * currVec[2]}
+	else
+		newVec = {newVec[1], oneOrMinusOne()}
+	end
+	return newVec
 end
 
 function gameOver()
