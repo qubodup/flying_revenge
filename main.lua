@@ -1,12 +1,20 @@
 function love.load()
 	math.randomseed( os.time() )
+	prepareLevel("easy") -- easy or hard
+end
+
+function prepareLevel(mode)
+	gameMode = mode
 	love.graphics.setBackgroundColor( 107, 186, 112 )
 
 	-- game status can be title, instructions, game or gameover
 	status = "title"
 	timerGameover = 0
 	-- game mode refers to controls and random movement. it can be easy or hard.
-	gameMode = "easy"
+	gameModeText = {
+		easy = "easy mode: press space to\nhalt and change direction",
+		hard = "hard mode: press space to\nstay still",
+	}
 	gameoverStep = {false,false,false,false,false,false}
 	timerPreGameover = 0 -- for the seconds after boss death, before gameover
 	timerPreGameoverLimit = 2
@@ -107,7 +115,7 @@ function love.load()
 				love.audio.newSource("scream1.ogg", stream),
 				love.audio.newSource("scream2.ogg", stream),
 			},
-			head = love.audio.newSource("scream1.ogg", stream),
+			head = love.audio.newSource("suck.ogg", stream),
 			body = love.audio.newSource("scream2.ogg", stream),
 		},
 	}
@@ -218,7 +226,7 @@ function love.update(dt)
 			if spacePressed then
 				flyFreakTimer = flyFreakTimer + dt
 				if flyFreakTimer > flyFreakTimerLimit then
-					fly.dir = changeDir(fly.dir)
+					fly.dir = rotateDir(fly.dir)
 					flyFreakTimer = 0
 				end
 			end
@@ -304,6 +312,10 @@ function love.draw()
 		for i,v in ipairs(puddles) do
 			love.graphics.draw(gfx.blood, math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
 		end
+		-- instructions (only during game)
+		if status == "game" then
+			love.graphics.print(gameModeText[gameMode],32,32)
+		end
 		-- alive people
 		for i,v in ipairs(humans) do
 			if flyOver(v) then
@@ -361,7 +373,11 @@ function love.keypressed(key, unicode)
 			timerGameover = math.floor(timerGameover + 1)
 		-- restart game
 		elseif key == ' ' and gameoverStep[5] then
-			love.load()
+			if gameMode == "easy" then
+				prepareLevel("hard")
+			elseif gameMode == "hard" then
+				prepareLevel("easy")
+			end
 		end
 		-- boss debug
 		if key == 'd' then
@@ -485,6 +501,25 @@ function changeDir(currVec)
 		newVec = {newVec[1], -1 * currVec[2]}
 	else
 		newVec = {newVec[1], oneOrMinusOne()}
+	end
+	return newVec
+end
+
+-- rotates a direction vector clockwise
+function rotateDir(currVec)
+	local newVec = currVec
+	if currVec[1] == -1 then
+		if currVec[2] == -1 then
+			newVec[2] = 1
+		else
+			newVec[1] = 1
+		end
+	else
+		if currVec[2] == -1 then
+			newVec[1] = -1
+		else
+			newVec[2] = -1
+		end
 	end
 	return newVec
 end
