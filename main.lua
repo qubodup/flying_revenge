@@ -115,7 +115,7 @@ function prepareLevel(mode)
 				love.audio.newSource("scream1.ogg", stream),
 				love.audio.newSource("scream2.ogg", stream),
 			},
-			head = love.audio.newSource("suck.ogg", stream),
+			head = love.audio.newSource("splashplus.ogg", stream),
 			body = love.audio.newSource("scream2.ogg", stream),
 		},
 	}
