@@ -5,6 +5,12 @@ end
 
 function prepareLevel(mode)
 	gameMode = mode
+	-- text for 'tip'
+	if gameMode == "easy" then
+		nextGameMode = "hard"
+	elseif gameMode == "hard" then
+		nextGameMode = "easy"
+	end
 	love.graphics.setBackgroundColor( 107, 186, 112 )
 
 	-- game status can be title, instructions, game or gameover
@@ -12,8 +18,8 @@ function prepareLevel(mode)
 	timerGameover = 0
 	-- game mode refers to controls and random movement. it can be easy or hard.
 	gameModeText = {
-		easy = "easy mode: press space to\nhalt and change direction",
-		hard = "hard mode: press space to\nstay still",
+		easy = "easy mode: hold space to\nhalt and change direction",
+		hard = "hard mode: hold space to\nstay still",
 	}
 	gameoverStep = {false,false,false,false,false,false}
 	timerPreGameover = 0 -- for the seconds after boss death, before gameover
@@ -42,7 +48,10 @@ function prepareLevel(mode)
 			love.graphics.newImage("human2.gif"),
 		},
 		blood = love.graphics.newImage("blood.gif"),
-		bg = love.graphics.newImage("smear.png"),
+		bg = {
+			easy = love.graphics.newImage("smearGreen.png"),
+			hard = love.graphics.newImage("smear.png"),
+		},
 		explosion = {
 			love.graphics.newImage("nexplosion1.png"),
 			love.graphics.newImage("nexplosion2.png"),
@@ -97,7 +106,7 @@ function prepareLevel(mode)
 			limit = 2,
 		},
 	}
-	timingExplosion = {0,.75,1.5,3,5,8}
+	timingExplosion = {0,.50,1,2,4,6}
 	currentExplosion = 0
 	currentFly = 1
 	sfx = {
@@ -122,6 +131,7 @@ function prepareLevel(mode)
 	sfx.boss.pain[1]:setPitch(.5)
 	sfx.boss.pain[2]:setPitch(.5)
 	humanSpeed = 25
+	humanLimitMax = 8
 	fly = {
 		speed = 100,
 		pos = {math.random(128, 384), math.random(128,384)},
@@ -129,12 +139,13 @@ function prepareLevel(mode)
 	}
 	humans = {}
 	for count = 1, math.random(9,18), 1 do
-		table.insert(humans, { pos = {math.random(32, 480), math.random(32, 480)}, dir = {oneOrMinusOne(), oneOrMinusOne()}})
+		table.insert(humans, { pos = {math.random(32, 480), math.random(32, 480)}, dir = {oneOrMinusOne(), oneOrMinusOne()}, limit = math.random(1,humanLimitMax) })
 	end
 	puddles = {}
 	spacePressed = false
 	flyFreakTimer = 0
-	flyFreakTimerLimit = 1
+	flyFreakTimerLimit = { easy=.5, hard=1.25 }
+	flyFreakTimerLimit = flyFreakTimerLimit[gameMode]
 	flyFreakTimerMax = 2
 	-- killing one human makes fly change dir less (by flyFreakTimerIncrease)
 	flyFreakTimerIncrease = (flyFreakTimerMax - flyFreakTimerMax)/#humans
@@ -160,7 +171,7 @@ function prepareLevel(mode)
 		},
 		{
 		pos = {32, 96 + 96*3 + 48},
-		text = "restart by pressing space",
+		text = "play " .. nextGameMode .. " by pressing space",
 		},
 	}
 	score = { -- consists of sucks and time
@@ -175,6 +186,12 @@ function love.update(dt)
 		score.time = score.time + dt
 		-- humans
 		for i,v in ipairs(humans) do
+			-- random direction changes
+			humans[i].limit = v.limit +  dt
+			if v.limit > humanLimitMax then
+				humans[i].dir = changeDir(v.dir)
+				humans[i].limit = 0
+			end
 			newPosNeeded = false
 			newPos = step(v, humanSpeed, dt)
 			if newPos[1] < 32 and v.dir[1] == -1 or newPos[1] > 480 and v.dir[1] == 1 then
@@ -218,7 +235,9 @@ function love.update(dt)
 		if gameMode == "hard" then
 			flyFreakTimer = flyFreakTimer + (dt * (1 + math.random()))
 			if flyFreakTimer > flyFreakTimerLimit then
-				fly.dir = {oneOrMinusOne(), oneOrMinusOne()}
+				-- old, hard navigation
+				--fly.dir = {oneOrMinusOne(), oneOrMinusOne()} 
+				fly.dir = changeDir(fly.dir)
 				flyFreakTimer = 0
 			end
 		elseif gameMode == "easy" then
@@ -270,19 +289,19 @@ function love.update(dt)
 			love.audio.play(sfx.kaboom)
 			gameoverStep[6] = true
 		elseif timerGameover > 5 and not gameoverStep[5] then
-			love.audio.play(sfx.boom)
+			soundPlay(sfx.boom)
 			gameoverStep[5] = true
 		elseif timerGameover > 4 and not gameoverStep[4] then
-			love.audio.play(sfx.boom)
+			soundPlay(sfx.boom)
 			gameoverStep[4] = true
 		elseif timerGameover > 3 and not gameoverStep[3] then
-			love.audio.play(sfx.boom)
+			soundPlay(sfx.boom)
 			gameoverStep[3] = true
 		elseif timerGameover > 2 and not gameoverStep[2] then
-			love.audio.play(sfx.boom)
+			soundPlay(sfx.boom)
 			gameoverStep[2] = true
 		elseif timerGameover > 1 and not gameoverStep[1] then
-			love.audio.play(sfx.boom)
+			soundPlay(sfx.boom)
 			gameoverStep[1] = true
 			love.audio.resume(sfx.bzzz)
 		end
@@ -297,17 +316,17 @@ function love.update(dt)
 end
 
 function love.draw()
+	-- bg, might cause massive slowdown
+	 for i = 0, 512, 32 do
+		for j = 0, 512, 32 do
+			love.graphics.draw(gfx.bg[gameMode], i, j)
+		end
+	end
 	if status == "title" then
 		love.graphics.draw(gfx.title, 128, 112)
 	elseif status == "instructions" then
 		love.graphics.draw(gfx.instructions, 128, 112)
 	elseif status == "game" or status == "gameover" then
-		-- bg, causes slowdown :(
-		--[[ for i = 0, 512, 32 do
-			for j = 0, 512, 32 do
-				love.graphics.draw(gfx.bg, i, j)
-			end
-		end ]]--
 		-- dead people
 		for i,v in ipairs(puddles) do
 			love.graphics.draw(gfx.blood, math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
@@ -404,6 +423,9 @@ function love.keyreleased(key, unicode)
 		spacePressed = false
 		if not muteBzzz then
 			love.audio.resume(sfx.bzzz)
+		end
+		if gameMode == "easy" then
+			flyFreakTimer = flyFreakTimerLimit/2
 		end
 	end
 end
@@ -510,15 +532,15 @@ function rotateDir(currVec)
 	local newVec = currVec
 	if currVec[1] == -1 then
 		if currVec[2] == -1 then
-			newVec[2] = 1
-		else
 			newVec[1] = 1
-		end
-	else
-		if currVec[2] == -1 then
-			newVec[1] = -1
 		else
 			newVec[2] = -1
+		end
+	else
+		if currVec[2] == 1 then
+			newVec[1] = -1
+		else
+			newVec[2] = 1
 		end
 	end
 	return newVec
@@ -532,4 +554,10 @@ function gameOver()
 	textOver[3].text = math.floor(score.time/60)..":"..seconds..textOver[3].text
 	status = "gameover"
 	--love.audio.pause(sfx.bzzz)
+end
+
+-- stops and plays a sound
+function soundPlay(sound)
+	love.audio.stop(sound)
+	love.audio.play(sound)
 end
