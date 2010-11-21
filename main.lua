@@ -1,6 +1,7 @@
 function love.load()
 	math.randomseed( os.time() )
 	prepareLevel("easy") -- easy or hard
+	debug = false -- debug mode for testing you see.
 end
 
 function prepareLevel(mode)
@@ -399,18 +400,18 @@ function love.keypressed(key, unicode)
 			end
 		end
 		-- boss debug
-		if key == 'd' then
+		if key == 'd' and debug then
 			humans = {}
 			boss.stage = "active"
 		end
 		-- game over debug
-		if key == 'g' then
+		if key == 'g' and debug then
 			humans = {}
 			boss.stage = "active"
 			gameOver()
 		end
 		-- no buzz sound debug
-		if key == 's' then
+		if key == 's' and debug then
 			muteBzzz = not muteBzzz
 			love.audio.pause(sfx.bzzz)
 			if not muteBzzz then love.audio.resume(sfx.bzzz) end
@@ -493,7 +494,9 @@ end
 
 -- debug fly positioning via mouse 
 function love.mousepressed( x, y, button )
-	fly.pos={ x, y }
+	if debug then
+		fly.pos={ x, y }
+	end
 end
 
 function flyOver(targetVector)
