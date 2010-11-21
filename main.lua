@@ -1,7 +1,7 @@
 function love.load()
 	math.randomseed( os.time() )
 	prepareLevel("easy") -- easy or hard
-	debug = false -- debug mode for testing you see.
+	debug = true -- debug mode for testing you see.
 end
 
 function prepareLevel(mode)
@@ -63,7 +63,7 @@ function prepareLevel(mode)
 	}
 	boss = {
 		stage = "sleeping", -- can be sleeping, active, limbless or dead
-		status = {
+		status = { -- can be fit, dead or pain
 			head = "fit",
 			body = "fit",
 			armRight = "fit",
@@ -92,6 +92,9 @@ function prepareLevel(mode)
 				armLeft = love.graphics.newImage("boss-arm-left-dead.png"),
 				armRight = love.graphics.newImage("boss-arm-right-dead.png"),
 			},
+			pain = {
+				head = love.graphics.newImage("boss-head-pain.png"),
+			},
 		},
 		offset = {
 			head = { -32, -96 },
@@ -105,6 +108,10 @@ function prepareLevel(mode)
 		freak = {
 			timer = 0,
 			limit = 2,
+		},
+		pain = {
+			timer = 0,
+			limit = 1,
 		},
 	}
 	timingExplosion = {0,.50,1,2,4,6}
@@ -229,6 +236,12 @@ function love.update(dt)
 			if boss.freak.timer > boss.freak.limit then
 				boss.dir = {oneOrMinusOne(), oneOrMinusOne()}
 				boss.freak.timer = 0
+			end
+			-- boss pain timer
+			if boss.pain.timer > 0 then
+				boss.pain.timer = boss.pain.timer - dt
+			elseif boss.pain.timer <= 0 then
+				boss.status.head = "fit"
 			end
 		end
 		-- fly
@@ -449,7 +462,7 @@ function smashThem()
 					boss.pos[2] + boss.offset[i][2] + 32,
 				},
 			}
-			if flyOver(bossPart) and v == "fit" then
+			if flyOver(bossPart) and v ~= "dead" then
 				-- head/body exceptions
 				if boss.stage == "limbless" or ( i ~= "body" and i ~= "head" ) then
 					table.insert(puddles, bossPart)
@@ -480,6 +493,8 @@ function smashThem()
 		love.audio.play(sfx.splash)
 		flyFreakTimer = flyFreakTimer + flyFreakTimerIncrease
 	elseif bossHurt then
+		boss.status.head = "pain"
+		boss.pain.timer = boss.pain.limit
 		love.audio.stop(sfx.boss.pain[1])
 		love.audio.play(sfx.boss.pain[1])
 	else
