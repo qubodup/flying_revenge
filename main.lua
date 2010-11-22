@@ -143,12 +143,17 @@ function prepareLevel(mode)
 	fly = {
 		speed = 100,
 		pos = {math.random(128, 384), math.random(128,384)},
-		dir = {oneOrMinusOne(), oneOrMinusOne() }
+		dir = {oneOrMinusOne(), oneOrMinusOne() },
+		size = {
+			base = 32,
+			scale = 1,
+		},
 	}
 	humans = {}
 	for count = 1, math.random(9,18), 1 do
 		table.insert(humans, { pos = {math.random(32, 480), math.random(32, 480)}, dir = {oneOrMinusOne(), oneOrMinusOne()}, limit = math.random(1,humanLimitMax) })
 	end
+	humansBase = #humans -- ammount of humans at game start
 	puddles = {}
 	spacePressed = false
 	flyFreakTimer = 0
@@ -156,7 +161,7 @@ function prepareLevel(mode)
 	flyFreakTimerLimit = flyFreakTimerLimit[gameMode]
 	flyFreakTimerMax = 2
 	-- killing one human makes fly change dir less (by flyFreakTimerIncrease)
-	flyFreakTimerIncrease = (flyFreakTimerMax - flyFreakTimerMax)/#humans
+	flyFreakTimerIncrease = (flyFreakTimerMax - flyFreakTimerMax)/humansBase
 	flyAnimationTimer = 0
 	sfx.bzzz:setLooping( true )
 	muteBuzz = false
@@ -365,7 +370,7 @@ function love.draw()
 		end
 		-- fly
 		if currentExplosion < 1 then
-			love.graphics.draw(gfx.fly[currentFly][string.gsub("a"..fly.dir[1]..fly.dir[2],"-","_")], math.floor(fly.pos[1]-32), math.floor(fly.pos[2]-32))
+			love.graphics.draw(gfx.fly[currentFly][string.gsub("a"..fly.dir[1]..fly.dir[2],"-","_")], math.floor(fly.pos[1]-(fly.size.base * fly.size.scale)), math.floor(fly.pos[2]-(fly.size.base * fly.size.scale)), 0, fly.size.scale, fly.size.scale)
 		end
 	end
 	if status == "gameover" then
@@ -492,6 +497,7 @@ function smashThem()
 		love.audio.stop(sfx.splash)
 		love.audio.play(sfx.splash)
 		flyFreakTimer = flyFreakTimer + flyFreakTimerIncrease
+		fly.size.scale = fly.size.scale + 1/humansBase
 	elseif bossHurt then
 		boss.status.head = "pain"
 		boss.pain.timer = boss.pain.limit
@@ -515,7 +521,7 @@ function love.mousepressed( x, y, button )
 end
 
 function flyOver(targetVector)
-	if targetVector.pos[1] < fly.pos[1] + 32 and targetVector.pos[1] > fly.pos[1] - 32 and targetVector.pos[2] < fly.pos[2] + 32 and targetVector.pos[2] > fly.pos[2] - 32 then
+	if targetVector.pos[1] < fly.pos[1] + (fly.size.base * fly.size.scale)  and targetVector.pos[1] > fly.pos[1] - (fly.size.base * fly.size.scale) and targetVector.pos[2] < fly.pos[2] + (fly.size.base * fly.size.scale) and targetVector.pos[2] > fly.pos[2] - (fly.size.base * fly.size.scale) then
 		return true
 	else
 		return false 
