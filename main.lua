@@ -433,7 +433,7 @@ function love.draw()
 		end
 		-- explosion animation
 		if gameoverStep[6] and currentExplosion > 0 and currentExplosion < 6 then
-				love.graphics.draw(gfx.explosion[currentExplosion],fly.pos[1] - 64 ,fly.pos[2] - 96)
+				love.graphics.draw(gfx.explosion[currentExplosion],math.floor(fly.pos[1] - 64) ,math.floor(fly.pos[2] - 96))
 		end
 	end
 end
