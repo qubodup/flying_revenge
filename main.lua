@@ -1,31 +1,19 @@
 function love.load()
 	math.randomseed( os.time() )
-	prepareLevel("easy") -- easy or hard
+	window = {love.graphics.getWidth(), love.graphics.getHeight()}
 	debug = true -- debug mode for testing you see.
+	loadStuff()
+	prepareLevel("easy") -- easy or hard
 end
 
-function prepareLevel(mode)
-	gameMode = mode
-	-- text for 'tip'
-	if gameMode == "easy" then
-		nextGameMode = "hard"
-	elseif gameMode == "hard" then
-		nextGameMode = "easy"
-	end
-	love.graphics.setBackgroundColor( 107, 186, 112 )
-
-	-- game status can be title, instructions, game or gameover
-	status = "title"
-	timerGameover = 0
+-- stuff that neads to be loaded once
+function loadStuff()
 	-- game mode refers to controls and random movement. it can be easy or hard.
 	gameModeText = {
-		easy = "easy mode: hold space to\nhalt and change direction",
-		hard = "hard mode: hold space to\nstay still",
+		easy = "press and hold space",
+		hard = "press and hold space\nagain",
 	}
-	gameoverStep = {false,false,false,false,false,false}
-	timerPreGameover = 0 -- for the seconds after boss death, before gameover
-	timerPreGameoverLimit = 2
-	font = love.graphics.newImageFont("font-handirt-padding.png", "0123456789.,:;()abcdefghijklmnopqrstuvwxyz ")
+	font = love.graphics.newImageFont("font-handirt-padding.png", "0123456789.,:;()abcdefghijklmnopqrstuvwxyz'!?/_ ")
 	love.graphics.setFont(font)
 	gfx = {
 		title = love.graphics.newImage("title.png"),
@@ -60,22 +48,7 @@ function prepareLevel(mode)
 			love.graphics.newImage("nexplosion4.png"),
 			love.graphics.newImage("nexplosion5.png"),
 		},
-	}
-	boss = {
-		stage = "sleeping", -- can be sleeping, active, limbless or dead
-		status = { -- can be fit, dead or pain
-			head = "fit",
-			body = "fit",
-			armRight = "fit",
-			armLeft = "fit",
-			legRight = "fit",
-			legLeft = "fit",
-		},
-		speedInitial = 35, -- initial speed of boss
-		speed = 35,
-		pos = { 256, 256 },
-		dir = {oneOrMinusOne(), oneOrMinusOne()},
-		gfx = {
+		boss = {
 			fit = {
 				head = love.graphics.newImage("boss-head.png"),
 				body = love.graphics.newImage("boss-body.png"),
@@ -96,6 +69,49 @@ function prepareLevel(mode)
 				head = love.graphics.newImage("boss-head-pain.png"),
 			},
 		},
+	}
+	-- nicer scaled up fly
+	for i,v in pairs(gfx.fly[2]) do
+		v:setFilter("nearest","nearest")
+	end
+	for i,v in pairs(gfx.fly[1]) do
+		v:setFilter("nearest","nearest")
+	end
+	website = {
+		text = "qubodup.github.com/\n   flying_revenge",
+		pos = {104, 396},
+	}
+end
+
+function prepareLevel(mode)
+	gameMode = mode
+	-- text for 'tip'
+	if gameMode == "easy" then
+		nextGameMode = "hard"
+	elseif gameMode == "hard" then
+		nextGameMode = "easy"
+	end
+	-- game status can be title, instructions, sequence, game or gameover
+	status = "title"
+	timerGameover = 0
+	-- post-game screen progress
+	gameoverStep = {false,false,false,false,false,false}
+	timerPreGameover = 0 -- for the seconds after boss death, before gameover
+	timerPreGameoverLimit = 2
+	boss = {
+		stage = "sleeping", -- can be sleeping, active, limbless or dead
+		status = { -- can be fit, dead or pain
+			head = "fit",
+			body = "fit",
+			armRight = "fit",
+			armLeft = "fit",
+			legRight = "fit",
+			legLeft = "fit",
+		},
+		speedInitial = 35, -- initial speed of boss
+		speed = 35,
+		pos = { 256, 256 },
+		dir = {oneOrMinusOne(), oneOrMinusOne()},
 		offset = {
 			head = { -32, -96 },
 			body = { -32, -32 },
@@ -113,11 +129,16 @@ function prepareLevel(mode)
 			timer = 0,
 			limit = 1,
 		},
+		size = {
+			half = 98, -- 'radius'
+			scale = 1,
+		}
 	}
 	timingExplosion = {0,.50,1,2,4,6}
 	currentExplosion = 0
 	currentFly = 1
 	sfx = {
+		vomit = love.audio.newSource("vomit.ogg", stream),
 		bzzz = love.audio.newSource("bzzz.ogg", stream),
 		splash = love.audio.newSource("splash.ogg", stream),
 		suck = love.audio.newSource("suck.ogg", stream),
@@ -145,7 +166,7 @@ function prepareLevel(mode)
 		pos = {math.random(128, 384), math.random(128,384)},
 		dir = {oneOrMinusOne(), oneOrMinusOne() },
 		size = {
-			base = 32,
+			half = 32, -- 'radius'
 			scale = 1,
 		},
 	}
@@ -191,6 +212,11 @@ function prepareLevel(mode)
 		time = 0,
 		sucks = 0,
 	}
+	sequence = {
+		time = 0,
+		limit = 1,
+	}
+	dirs = {{1,1},{1,-1},{-1,1},{-1,-1},}
 end
 
 function love.update(dt)
@@ -256,7 +282,7 @@ function love.update(dt)
 			if flyFreakTimer > flyFreakTimerLimit then
 				-- old, hard navigation
 				--fly.dir = {oneOrMinusOne(), oneOrMinusOne()} 
-				fly.dir = changeDir(fly.dir)
+				fly.dir = changeDirEven(fly.dir)
 				flyFreakTimer = 0
 			end
 		elseif gameMode == "easy" then
@@ -290,6 +316,23 @@ function love.update(dt)
 			if flyOver(v) and sfx.scream[1]:isStopped() and sfx.scream[2]:isStopped() then
 				love.audio.play(sfx.scream[math.random(1,2)])
 			end
+		end
+	-- sequence movement
+	elseif status == "sequence" then
+		sequence.time = sequence.time + dt
+		boss.pos = {boss.pos[1] + (boss.speed * dt * fly.dir[1]), boss.pos[2] + (boss.speed * dt * fly.dir[2]) }
+		if sequence.time > sequence.limit then
+			finishSequenceBossSpit()
+		end
+		if boss.size.scale < 1 then
+			boss.size.scale = boss.size.scale + dt/sequence.limit
+		else
+			boss.size.scale = 1
+		end
+		if fly.size.scale > 1 then
+			fly.size.scale = fly.size.scale - dt/sequence.limit
+		else
+			fly.size.scale = 1
 		end
 	end
 	if not spacePressed then -- fly animation should run when not sucking
@@ -336,23 +379,20 @@ end
 
 function love.draw()
 	-- bg, might cause massive slowdown
-	 for i = 0, 512, 32 do
-		for j = 0, 512, 32 do
+	 for i = 0, 512, 64 do
+		for j = 0, 512, 64 do
 			love.graphics.draw(gfx.bg[gameMode], i, j)
 		end
 	end
 	if status == "title" then
 		love.graphics.draw(gfx.title, 128, 112)
+		love.graphics.print(website.text, website.pos[1], website.pos[2])
 	elseif status == "instructions" then
 		love.graphics.draw(gfx.instructions, 128, 112)
-	elseif status == "game" or status == "gameover" then
+	elseif status == "game" or status == "sequence" or status == "gameover" then
 		-- dead people
 		for i,v in ipairs(puddles) do
 			love.graphics.draw(gfx.blood, math.floor(v.pos[1]-32), math.floor(v.pos[2]-32))
-		end
-		-- instructions (only during game)
-		if status == "game" then
-			love.graphics.print(gameModeText[gameMode],32,32)
 		end
 		-- alive people
 		for i,v in ipairs(humans) do
@@ -365,12 +405,23 @@ function love.draw()
 		-- boss
 		if boss.stage ~= "sleeping" then
 			for i,v in pairs(boss.status) do
-				love.graphics.draw(boss.gfx[v][i], math.floor(boss.pos[1]) + boss.offset[i][1], math.floor(boss.pos[2] + boss.offset[i][2]))
+				love.graphics.draw(gfx.boss[v][i], math.floor(boss.pos[1]) + (boss.offset[i][1] * boss.size.scale), math.floor(boss.pos[2] + (boss.offset[i][2]) * boss.size.scale), 0, boss.size.scale, boss.size.scale)
 			end
 		end
 		-- fly
 		if currentExplosion < 1 then
-			love.graphics.draw(gfx.fly[currentFly][string.gsub("a"..fly.dir[1]..fly.dir[2],"-","_")], math.floor(fly.pos[1]-(fly.size.base * fly.size.scale)), math.floor(fly.pos[2]-(fly.size.base * fly.size.scale)), 0, fly.size.scale, fly.size.scale)
+			love.graphics.draw(gfx.fly[currentFly][string.gsub("a"..fly.dir[1]..fly.dir[2],"-","_")], math.floor(fly.pos[1]-(fly.size.half * fly.size.scale)), math.floor(fly.pos[2]-(fly.size.half * fly.size.scale)), 0, fly.size.scale, fly.size.scale)
+		end
+		-- instructions (only during game)
+		if (status == "game" or status == "sequence") then
+			if score.time <= 8 and score.time > 2 then
+				love.graphics.print(gameModeText[gameMode],80,32)
+			-- lol
+			elseif score.time < 110 and score.time > 95 then
+				love.graphics.print("take your time,\nyou can't lose this game\nyou see...",80,32)
+			elseif score.time < 125 and score.time >= 111 then
+				love.graphics.print("but seriously, consider\nmaking more use of\nthe spacebar perhaps",80,32)
+			end
 		end
 	end
 	if status == "gameover" then
@@ -401,7 +452,9 @@ function love.keypressed(key, unicode)
 		love.audio.play(sfx.boom)
 		love.audio.play(sfx.bzzz)
 	else
-		if key == ' ' and status ~= "gameover" then
+		if key == ' ' and status == "sequence" then
+			finishSequenceBossSpit()
+		elseif key == ' ' and status ~= "gameover" then
 			spacePressed = true
 			love.audio.pause(sfx.bzzz)
 			smashThem()
@@ -420,7 +473,7 @@ function love.keypressed(key, unicode)
 		-- boss debug
 		if key == 'd' and debug then
 			humans = {}
-			boss.stage = "active"
+			playSequenceBossSpit()
 		end
 		-- game over debug
 		if key == 'g' and debug then
@@ -509,7 +562,7 @@ function smashThem()
 	end
 	-- boss spawn check
 	if humansKilled and #humans == 0 then
-		boss.stage = "active"
+		playSequenceBossSpit()
 	end
 end
 
@@ -521,7 +574,7 @@ function love.mousepressed( x, y, button )
 end
 
 function flyOver(targetVector)
-	if targetVector.pos[1] < fly.pos[1] + (fly.size.base * fly.size.scale)  and targetVector.pos[1] > fly.pos[1] - (fly.size.base * fly.size.scale) and targetVector.pos[2] < fly.pos[2] + (fly.size.base * fly.size.scale) and targetVector.pos[2] > fly.pos[2] - (fly.size.base * fly.size.scale) then
+	if targetVector.pos[1] < fly.pos[1] + (fly.size.half * fly.size.scale)  and targetVector.pos[1] > fly.pos[1] - (fly.size.half * fly.size.scale) and targetVector.pos[2] < fly.pos[2] + (fly.size.half * fly.size.scale) and targetVector.pos[2] > fly.pos[2] - (fly.size.half * fly.size.scale) then
 		return true
 	else
 		return false 
@@ -547,6 +600,20 @@ function changeDir(currVec)
 		newVec = {newVec[1], -1 * currVec[2]}
 	else
 		newVec = {newVec[1], oneOrMinusOne()}
+	end
+	return newVec
+end
+
+-- changes a direction vector kind of randomly but 'evenly'
+function changeDirEven(currVec)
+	local newVec = {}
+	if #dirs > 1 then
+		local rand = math.random(1, #dirs)
+		newVec = dirs[rand]
+		table.remove(dirs, rand)
+	else
+		newVec = dirs[1]
+		dirs = {{1,1},{1,-1},{-1,1},{-1,-1},}
 	end
 	return newVec
 end
@@ -580,8 +647,45 @@ function gameOver()
 	--love.audio.pause(sfx.bzzz)
 end
 
--- stops and plays a sound
+-- stops and plays a sound (saves me a line and some characters)
 function soundPlay(sound)
 	love.audio.stop(sound)
 	love.audio.play(sound)
+end
+
+-- returns the direction to face the window's center
+function dirFaceCenter(pos)
+	newDir = {}
+	if pos[1] < window[1]/2 then
+		newDir[1] = 1
+	else
+		newDir[1] = -1
+	end
+	if pos[2] < window[2]/2 then
+		newDir[2] = 1
+	else
+		newDir[2] = -1
+	end
+	return newDir
+end
+
+function playSequenceBossSpit()
+	spacePressed = true
+	love.audio.stop(sfx.bzzz)
+	love.audio.play(sfx.vomit)
+	status = "sequence"
+	boss.size.scale = 0.25
+	boss.stage = "immobile"
+	fly.dir = dirFaceCenter(fly.pos)
+	fly.size.scale = 2
+	boss.pos = { fly.pos[1] + (fly.dir[1] * fly.size.half), fly.pos[2] + (fly.dir[2] * fly.size.half) }
+end
+
+function finishSequenceBossSpit()
+	spacePressed = false
+	love.audio.play(sfx.bzzz)
+	status = "game"
+	boss.stage = "active"
+	boss.size.scale = 1
+	fly.size.scale = 1
 end
