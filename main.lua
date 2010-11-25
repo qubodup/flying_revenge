@@ -68,6 +68,9 @@ function loadStuff()
 			pain = {
 				head = love.graphics.newImage("boss-head-pain.png"),
 			},
+			deathpain = {
+				head = love.graphics.newImage("boss-head-deathpain.png"),
+			},
 		},
 	}
 	-- nicer scaled up fly
@@ -81,6 +84,28 @@ function loadStuff()
 		text = "qubodup.github.com/\n   flying_revenge",
 		pos = {104, 396},
 	}
+	sfx = {
+		vomit = love.audio.newSource("vomit.ogg", stream),
+		bzzz = love.audio.newSource("bzzz.ogg", stream),
+		splash = love.audio.newSource("splash.ogg", stream),
+		suck = love.audio.newSource("suck.ogg", stream),
+		scream = {
+			love.audio.newSource("scream1.ogg", stream),
+			love.audio.newSource("scream2.ogg", stream),
+		},
+		boom = love.audio.newSource("boom.ogg", stream),
+		kaboom = love.audio.newSource("kaboom.ogg", stream),
+		boss = {
+			pain = {
+				love.audio.newSource("scream1.ogg", stream),
+				love.audio.newSource("scream2.ogg", stream),
+			},
+			head = love.audio.newSource("splashplus.ogg", stream),
+			body = love.audio.newSource("scream2.ogg", stream),
+		},
+	}
+	sfx.boss.pain[1]:setPitch(.5)
+	sfx.boss.pain[2]:setPitch(.5)
 end
 
 function prepareLevel(mode)
@@ -137,28 +162,6 @@ function prepareLevel(mode)
 	timingExplosion = {0,.50,1,2,4,6}
 	currentExplosion = 0
 	currentFly = 1
-	sfx = {
-		vomit = love.audio.newSource("vomit.ogg", stream),
-		bzzz = love.audio.newSource("bzzz.ogg", stream),
-		splash = love.audio.newSource("splash.ogg", stream),
-		suck = love.audio.newSource("suck.ogg", stream),
-		scream = {
-			love.audio.newSource("scream1.ogg", stream),
-			love.audio.newSource("scream2.ogg", stream),
-		},
-		boom = love.audio.newSource("boom.ogg", stream),
-		kaboom = love.audio.newSource("kaboom.ogg", stream),
-		boss = {
-			pain = {
-				love.audio.newSource("scream1.ogg", stream),
-				love.audio.newSource("scream2.ogg", stream),
-			},
-			head = love.audio.newSource("splashplus.ogg", stream),
-			body = love.audio.newSource("scream2.ogg", stream),
-		},
-	}
-	sfx.boss.pain[1]:setPitch(.5)
-	sfx.boss.pain[2]:setPitch(.5)
 	humanSpeed = 25
 	humanLimitMax = 8
 	fly = {
@@ -389,6 +392,7 @@ function love.draw()
 		love.graphics.print(website.text, website.pos[1], website.pos[2])
 	elseif status == "instructions" then
 		love.graphics.draw(gfx.instructions, 128, 112)
+		love.graphics.print(website.text, website.pos[1], website.pos[2])
 	elseif status == "game" or status == "sequence" or status == "gameover" then
 		-- dead people
 		for i,v in ipairs(puddles) do
@@ -453,7 +457,8 @@ function love.keypressed(key, unicode)
 		love.audio.play(sfx.bzzz)
 	else
 		if key == ' ' and status == "sequence" then
-			finishSequenceBossSpit()
+			-- interrupt likely to be accidental
+			--finishSequenceBossSpit()
 		elseif key == ' ' and status ~= "gameover" then
 			spacePressed = true
 			love.audio.pause(sfx.bzzz)
@@ -535,6 +540,7 @@ function smashThem()
 							love.audio.play(sfx.boss.head)
 						else
 							love.audio.play(sfx.boss.pain[2])
+							boss.status.head = "deathpain"
 						end
 					end
 				end
