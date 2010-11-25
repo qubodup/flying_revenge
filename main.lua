@@ -101,11 +101,17 @@ function loadStuff()
 				love.audio.newSource("scream2.ogg", stream),
 			},
 			head = love.audio.newSource("splashplus.ogg", stream),
-			body = love.audio.newSource("scream2.ogg", stream),
+			body = love.audio.newSource("screamBoss.ogg", stream),
+			grunt = {
+				love.audio.newSource("grunt1.ogg", stream),
+				love.audio.newSource("grunt2.ogg", stream),
+			},
 		},
 	}
 	sfx.boss.pain[1]:setPitch(.5)
 	sfx.boss.pain[2]:setPitch(.5)
+	sfx.boss.grunt[1]:setPitch(.5)
+	sfx.boss.grunt[2]:setPitch(.5)
 end
 
 function prepareLevel(mode)
@@ -157,7 +163,11 @@ function prepareLevel(mode)
 		size = {
 			half = 98, -- 'radius'
 			scale = 1,
-		}
+		},
+		grunt = {
+			timer = 0,
+			limit = math.random(3,6),
+		},
 	}
 	timingExplosion = {0,.50,1,2,4,6}
 	currentExplosion = 0
@@ -271,10 +281,10 @@ function love.update(dt)
 				boss.dir = {oneOrMinusOne(), oneOrMinusOne()}
 				boss.freak.timer = 0
 			end
-			-- boss pain timer
+			-- boss pain and grunt timer
 			if boss.pain.timer > 0 then
 				boss.pain.timer = boss.pain.timer - dt
-			elseif boss.pain.timer <= 0 then
+			elseif boss.pain.timer <= 0 and boss.grunt.timer <= 0 then
 				boss.status.head = "fit"
 			end
 		end
@@ -318,6 +328,25 @@ function love.update(dt)
 		for i,v in ipairs(humans) do
 			if flyOver(v) and sfx.scream[1]:isStopped() and sfx.scream[2]:isStopped() then
 				love.audio.play(sfx.scream[math.random(1,2)])
+			end
+		end
+		-- fly over boss grunt
+		if boss.stage ~= "sleeping" then
+			boss.grunt.timer = boss.grunt.timer - dt
+			for i,v in pairs(boss.status) do
+				bossPart = {
+					pos = {
+						boss.pos[1] + boss.offset[i][1] + 32,
+						boss.pos[2] + boss.offset[i][2] + 32,
+					},
+				}
+				if flyOver(bossPart) and v == "fit" then
+					if boss.grunt.timer <= 0 then
+						love.audio.play(sfx.boss.grunt[math.random(1,2)])
+						boss.status.head = "pain"
+						boss.grunt.timer = boss.grunt.limit
+					end
+				end
 			end
 		end
 	-- sequence movement
