@@ -110,8 +110,6 @@ function loadStuff()
 	}
 	sfx.boss.pain[1]:setPitch(.5)
 	sfx.boss.pain[2]:setPitch(.5)
-	sfx.boss.grunt[1]:setPitch(.5)
-	sfx.boss.grunt[2]:setPitch(.5)
 end
 
 function prepareLevel(mode)
@@ -568,7 +566,7 @@ function smashThem()
 						if boss.status.head == "dead" then
 							love.audio.play(sfx.boss.head)
 						else
-							love.audio.play(sfx.boss.pain[2])
+							love.audio.play(sfx.boss.body)
 							boss.status.head = "deathpain"
 						end
 					end
