@@ -1,7 +1,7 @@
 function love.load()
 	math.randomseed( os.time() )
 	window = {love.graphics.getWidth(), love.graphics.getHeight()}
-	debug = true -- debug mode for testing you see.
+	debug = false -- debug mode for testing you see.
 	loadStuff()
 	prepareLevel("easy") -- easy or hard
 end
